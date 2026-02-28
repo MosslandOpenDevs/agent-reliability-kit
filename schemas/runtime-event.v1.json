@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ark.dev/schemas/runtime-event.v1.json",
+  "title": "ARK Runtime Event v1",
+  "type": "object",
+  "required": ["timestamp", "app", "phase"],
+  "properties": {
+    "timestamp": { "type": "string", "format": "date-time" },
+    "app": { "type": "string" },
+    "phase": { "type": "string", "enum": ["pre_request", "post_response", "error"] },
+    "provider": { "type": "string" },
+    "model": { "type": "string" },
+    "error": { "type": "object" }
+  }
+}
