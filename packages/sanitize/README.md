@@ -38,6 +38,9 @@ Set `includeImpact: true` to append `sanitizeImpact` counters to the returned pa
 ### `summarizeSanitizeImpact(originalMessages, sanitizedMessages)`
 Returns deterministic counters (`inputMessages`, `outputMessages`, `removedMessages`, `outputBlocks`) for observability and regression checks.
 
+### `summarizePayloadImpact(originalPayload, sanitizedPayload)`
+Extends message-level counters with top-level content counters (`inputContentBlocks`, `outputContentBlocks`, `removedContentBlocks`).
+
 ### `clearPreflightGuards()`
 Clears all registered hooks (useful for tests).
 

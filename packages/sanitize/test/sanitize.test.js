@@ -9,6 +9,7 @@ import {
   clearPreflightGuards,
   sanitizeMessages,
   summarizeSanitizeImpact,
+  summarizePayloadImpact,
 } from "../src/index.js";
 
 test("removeEmptyTextBlocks strips empty and whitespace-only text blocks", () => {
@@ -296,10 +297,35 @@ test("summarizeSanitizeImpact returns deterministic counters", () => {
   });
 });
 
+test("summarizePayloadImpact includes top-level content counters", () => {
+  const original = {
+    content: ["hello", { type: "text", text: "   " }],
+    messages: [
+      { role: "assistant", content: [{ type: "text", text: "   " }] },
+      { role: "user", content: [{ type: "input_text", text: "hello" }] },
+    ],
+  };
+
+  const sanitizedPayload = {
+    content: [{ type: "text", text: "hello" }],
+    messages: sanitizeMessages(original.messages, { provider: "openai" }),
+  };
+
+  assert.deepEqual(summarizePayloadImpact(original, sanitizedPayload), {
+    inputMessages: 2,
+    outputMessages: 1,
+    removedMessages: 1,
+    outputBlocks: 1,
+    inputContentBlocks: 2,
+    outputContentBlocks: 1,
+    removedContentBlocks: 1,
+  });
+});
+
 test("runPreflightGuards can include sanitize impact in payload", () => {
   const result = runPreflightGuards(
     {
-      content: ["ok"],
+      content: ["ok", { type: "text", text: "   " }],
       messages: [
         { role: "assistant", content: [{ type: "text", text: "   " }] },
         { role: "user", content: [{ type: "input_text", text: "hello" }] },
@@ -313,5 +339,8 @@ test("runPreflightGuards can include sanitize impact in payload", () => {
     outputMessages: 1,
     removedMessages: 1,
     outputBlocks: 1,
+    inputContentBlocks: 2,
+    outputContentBlocks: 1,
+    removedContentBlocks: 1,
   });
 });

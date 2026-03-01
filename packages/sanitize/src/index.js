@@ -201,6 +201,24 @@ export function summarizeSanitizeImpact(originalMessages, sanitizedMessages) {
 }
 
 /**
+ * Summarize full payload sanitize impact, including top-level content blocks.
+ *
+ * @param {{ content?: unknown, messages?: unknown }} originalPayload
+ * @param {{ content?: unknown, messages?: unknown }} sanitizedPayload
+ */
+export function summarizePayloadImpact(originalPayload, sanitizedPayload) {
+  const inputContentBlocks = normalizeContentBlocks(originalPayload?.content).length;
+  const outputContentBlocks = Array.isArray(sanitizedPayload?.content) ? sanitizedPayload.content.length : 0;
+
+  return {
+    ...summarizeSanitizeImpact(originalPayload?.messages, sanitizedPayload?.messages),
+    inputContentBlocks,
+    outputContentBlocks,
+    removedContentBlocks: Math.max(0, inputContentBlocks - outputContentBlocks),
+  };
+}
+
+/**
  * Run preflight sanitization + provider/global hooks.
  *
  * @param {{ content?: unknown, messages?: unknown } & Record<string, unknown>} payload
@@ -225,7 +243,7 @@ export function runPreflightGuards(payload, options = {}) {
   };
 
   if (options.includeImpact === true) {
-    sanitized.sanitizeImpact = summarizeSanitizeImpact(payload?.messages, messages);
+    sanitized.sanitizeImpact = summarizePayloadImpact(payload, sanitized);
   }
 
   const hooks = [
