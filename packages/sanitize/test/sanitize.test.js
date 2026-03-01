@@ -98,6 +98,29 @@ test("sanitizeMessages can keep empty messages when requested", () => {
   ]);
 });
 
+test("sanitizeMessages applies provider profile normalization", () => {
+  const openaiMessages = sanitizeMessages(
+    [{ role: "user", content: [{ type: "input_text", text: "hello" }] }],
+    { provider: "openai" },
+  );
+
+  assert.deepEqual(openaiMessages, [
+    { role: "user", content: [{ type: "text", text: "hello" }] },
+  ]);
+
+  const anthropicMessages = sanitizeMessages(
+    [{ role: "user", content: [{ type: "image_url", image_url: "https://example.com/a.png" }] }],
+    { provider: "anthropic" },
+  );
+
+  assert.deepEqual(anthropicMessages, [
+    {
+      role: "user",
+      content: [{ type: "image", source: { type: "url", url: "https://example.com/a.png" } }],
+    },
+  ]);
+});
+
 test("runPreflightGuards applies global and provider-specific hooks", () => {
   clearPreflightGuards();
 

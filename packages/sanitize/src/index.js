@@ -93,6 +93,29 @@ export function normalizeContentBlocks(content) {
   return normalized;
 }
 
+
+function normalizeProviderContentBlock(provider, block) {
+  if (!isObject(block)) {
+    return block;
+  }
+
+  if (provider === "openai" && block.type === "input_text" && typeof block.text === "string") {
+    return { ...block, type: "text" };
+  }
+
+  if (provider === "anthropic" && block.type === "image_url" && typeof block.image_url === "string") {
+    return {
+      type: "image",
+      source: {
+        type: "url",
+        url: block.image_url,
+      },
+    };
+  }
+
+  return block;
+}
+
 /**
  * Register a preflight hook.
  * Use provider "*" to apply globally.
@@ -126,7 +149,7 @@ export function clearPreflightGuards() {
  * - removes messages whose normalized content is empty
  *
  * @param {unknown} messages
- * @param {{ keepEmptyMessages?: boolean }} [options]
+ * @param {{ keepEmptyMessages?: boolean, provider?: string }} [options]
  * @returns {Array<{ role?: string, content: ContentBlock[] } & Record<string, unknown>>}
  */
 export function sanitizeMessages(messages, options = {}) {
@@ -135,12 +158,14 @@ export function sanitizeMessages(messages, options = {}) {
   }
 
   const keepEmptyMessages = options.keepEmptyMessages === true;
+  const provider = options.provider || DEFAULT_PROVIDER;
 
   const normalizedMessages = messages
     .filter((message) => isObject(message))
     .map((message) => ({
       ...message,
-      content: removeEmptyTextBlocks(normalizeContentBlocks(message.content)),
+      content: removeEmptyTextBlocks(normalizeContentBlocks(message.content))
+        .map((block) => normalizeProviderContentBlock(provider, block)),
     }));
 
   if (keepEmptyMessages) {
@@ -165,6 +190,7 @@ export function runPreflightGuards(payload, options = {}) {
     content: removeEmptyTextBlocks(normalizeContentBlocks(payload?.content)),
     messages: sanitizeMessages(payload?.messages, {
       keepEmptyMessages: options.keepEmptyMessages === true,
+      provider,
     }),
   };
 
