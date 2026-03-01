@@ -172,12 +172,31 @@ test("runPreflightGuards applies global and provider-specific hooks", () => {
   clearPreflightGuards();
 });
 
+test("runPreflightGuards applies profile normalization to top-level content by default", () => {
+  clearPreflightGuards();
+
+  const result = runPreflightGuards(
+    {
+      content: [{ type: "input_text", text: "hello" }],
+      messages: [
+        { role: "user", content: [{ type: "input_text", text: "hello" }] },
+      ],
+    },
+    { provider: "openai" },
+  );
+
+  assert.deepEqual(result.content, [{ type: "text", text: "hello" }]);
+  assert.deepEqual(result.messages, [
+    { role: "user", content: [{ type: "text", text: "hello" }] },
+  ]);
+});
+
 test("runPreflightGuards keeps original provider block types when profileMode is off", () => {
   clearPreflightGuards();
 
   const result = runPreflightGuards(
     {
-      content: ["ok"],
+      content: [{ type: "input_text", text: "hello" }],
       messages: [
         { role: "user", content: [{ type: "input_text", text: "hello" }] },
       ],
@@ -185,6 +204,7 @@ test("runPreflightGuards keeps original provider block types when profileMode is
     { provider: "openai", profileMode: "off" },
   );
 
+  assert.deepEqual(result.content, [{ type: "input_text", text: "hello" }]);
   assert.deepEqual(result.messages, [
     { role: "user", content: [{ type: "input_text", text: "hello" }] },
   ]);

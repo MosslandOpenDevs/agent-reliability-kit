@@ -186,13 +186,16 @@ export function sanitizeMessages(messages, options = {}) {
  */
 export function runPreflightGuards(payload, options = {}) {
   const provider = options.provider || DEFAULT_PROVIDER;
+  const profileMode = options.profileMode || "basic";
+
   let sanitized = {
     ...payload,
-    content: removeEmptyTextBlocks(normalizeContentBlocks(payload?.content)),
+    content: removeEmptyTextBlocks(normalizeContentBlocks(payload?.content))
+      .map((block) => (profileMode === "off" ? block : normalizeProviderContentBlock(provider, block))),
     messages: sanitizeMessages(payload?.messages, {
       keepEmptyMessages: options.keepEmptyMessages === true,
       provider,
-      profileMode: options.profileMode || "basic",
+      profileMode,
     }),
   };
 
