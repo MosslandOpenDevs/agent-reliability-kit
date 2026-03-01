@@ -149,7 +149,7 @@ export function clearPreflightGuards() {
  * - removes messages whose normalized content is empty
  *
  * @param {unknown} messages
- * @param {{ keepEmptyMessages?: boolean, provider?: string }} [options]
+ * @param {{ keepEmptyMessages?: boolean, provider?: string, profileMode?: "basic" | "off" }} [options]
  * @returns {Array<{ role?: string, content: ContentBlock[] } & Record<string, unknown>>}
  */
 export function sanitizeMessages(messages, options = {}) {
@@ -159,13 +159,14 @@ export function sanitizeMessages(messages, options = {}) {
 
   const keepEmptyMessages = options.keepEmptyMessages === true;
   const provider = options.provider || DEFAULT_PROVIDER;
+  const profileMode = options.profileMode || "basic";
 
   const normalizedMessages = messages
     .filter((message) => isObject(message))
     .map((message) => ({
       ...message,
       content: removeEmptyTextBlocks(normalizeContentBlocks(message.content))
-        .map((block) => normalizeProviderContentBlock(provider, block)),
+        .map((block) => (profileMode === "off" ? block : normalizeProviderContentBlock(provider, block))),
     }));
 
   if (keepEmptyMessages) {
@@ -180,7 +181,7 @@ export function sanitizeMessages(messages, options = {}) {
  * Run preflight sanitization + provider/global hooks.
  *
  * @param {{ content?: unknown, messages?: unknown } & Record<string, unknown>} payload
- * @param {{ provider?: string, keepEmptyMessages?: boolean }} [options]
+ * @param {{ provider?: string, keepEmptyMessages?: boolean, profileMode?: "basic" | "off" }} [options]
  * @returns {SanitizedPayload}
  */
 export function runPreflightGuards(payload, options = {}) {
@@ -191,6 +192,7 @@ export function runPreflightGuards(payload, options = {}) {
     messages: sanitizeMessages(payload?.messages, {
       keepEmptyMessages: options.keepEmptyMessages === true,
       provider,
+      profileMode: options.profileMode || "basic",
     }),
   };
 

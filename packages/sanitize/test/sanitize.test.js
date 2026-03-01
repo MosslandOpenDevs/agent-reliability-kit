@@ -121,6 +121,17 @@ test("sanitizeMessages applies provider profile normalization", () => {
   ]);
 });
 
+test("sanitizeMessages can disable provider profile normalization", () => {
+  const messages = sanitizeMessages(
+    [{ role: "user", content: [{ type: "input_text", text: "hello" }] }],
+    { provider: "openai", profileMode: "off" },
+  );
+
+  assert.deepEqual(messages, [
+    { role: "user", content: [{ type: "input_text", text: "hello" }] },
+  ]);
+});
+
 test("runPreflightGuards applies global and provider-specific hooks", () => {
   clearPreflightGuards();
 

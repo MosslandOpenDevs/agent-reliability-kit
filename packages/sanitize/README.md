@@ -20,10 +20,11 @@ Normalizes content into provider-friendly block arrays.
 - `Array<string | object>` -> object blocks (strings become text blocks)
 - unsupported values -> `[]`
 
-### `sanitizeMessages(messages, { keepEmptyMessages, provider })`
+### `sanitizeMessages(messages, { keepEmptyMessages, provider, profileMode })`
 Normalizes message arrays and removes messages that become empty after sanitization.
 Set `keepEmptyMessages: true` to preserve empty turns when downstream consumers require positional alignment.
 Set `provider` to apply lightweight provider-profile normalization (e.g., `input_text -> text` for OpenAI shape, `image_url -> image.source.url` for Anthropic shape).
+Set `profileMode: "off"` to disable provider normalization and keep original block types.
 
 ### `registerPreflightGuard(provider, hook)`
 Registers preflight hooks by provider name. Use `"*"` for global hooks.
