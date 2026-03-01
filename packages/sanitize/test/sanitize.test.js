@@ -209,3 +209,24 @@ test("runPreflightGuards keeps original provider block types when profileMode is
     { role: "user", content: [{ type: "input_text", text: "hello" }] },
   ]);
 });
+
+test("sanitizeMessages handles large message arrays deterministically", () => {
+  const messages = Array.from({ length: 1000 }, (_, idx) => ({
+    role: "user",
+    content: idx % 2 === 0
+      ? [{ type: "text", text: "   " }]
+      : [{ type: "input_text", text: `message-${idx}` }],
+  }));
+
+  const sanitized = sanitizeMessages(messages, { provider: "openai" });
+
+  assert.equal(sanitized.length, 500);
+  assert.deepEqual(sanitized[0], {
+    role: "user",
+    content: [{ type: "text", text: "message-1" }],
+  });
+  assert.deepEqual(sanitized.at(-1), {
+    role: "user",
+    content: [{ type: "text", text: "message-999" }],
+  });
+});

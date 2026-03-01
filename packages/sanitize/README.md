@@ -78,3 +78,5 @@ const sanitized = runPreflightGuards(
 cd packages/sanitize
 npm test
 ```
+
+Test suite includes provider profile behavior, profileMode bypass, and large-message deterministic sanitization.
