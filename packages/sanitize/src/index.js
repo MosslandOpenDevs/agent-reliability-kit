@@ -182,12 +182,15 @@ export function sanitizeMessages(messages, options = {}) {
  *
  * @param {unknown} originalMessages
  * @param {Array<{ content?: unknown[] }>} sanitizedMessages
- * @returns {{ inputMessages: number, outputMessages: number, removedMessages: number, outputBlocks: number }}
+ * @returns {{ inputMessages: number, outputMessages: number, removedMessages: number, inputBlocks: number, outputBlocks: number, removedBlocks: number }}
  */
 export function summarizeSanitizeImpact(originalMessages, sanitizedMessages) {
   const inputMessages = Array.isArray(originalMessages) ? originalMessages.length : 0;
   const outputMessages = Array.isArray(sanitizedMessages) ? sanitizedMessages.length : 0;
   const removedMessages = Math.max(0, inputMessages - outputMessages);
+  const inputBlocks = Array.isArray(originalMessages)
+    ? originalMessages.reduce((acc, msg) => acc + normalizeContentBlocks(msg?.content).length, 0)
+    : 0;
   const outputBlocks = Array.isArray(sanitizedMessages)
     ? sanitizedMessages.reduce((acc, msg) => acc + (Array.isArray(msg.content) ? msg.content.length : 0), 0)
     : 0;
@@ -196,7 +199,9 @@ export function summarizeSanitizeImpact(originalMessages, sanitizedMessages) {
     inputMessages,
     outputMessages,
     removedMessages,
+    inputBlocks,
     outputBlocks,
+    removedBlocks: Math.max(0, inputBlocks - outputBlocks),
   };
 }
 
