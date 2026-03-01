@@ -230,3 +230,27 @@ test("sanitizeMessages handles large message arrays deterministically", () => {
     content: [{ type: "text", text: "message-999" }],
   });
 });
+
+test("sanitizeMessages option matrix stays deterministic", () => {
+  const input = [
+    { role: "assistant", content: [{ type: "text", text: "   " }] },
+    { role: "user", content: [{ type: "input_text", text: "hello" }] },
+  ];
+
+  const basic = sanitizeMessages(input, { provider: "openai" });
+  const keepEmpty = sanitizeMessages(input, { provider: "openai", keepEmptyMessages: true });
+  const profileOff = sanitizeMessages(input, { provider: "openai", profileMode: "off" });
+
+  assert.deepEqual(basic, [
+    { role: "user", content: [{ type: "text", text: "hello" }] },
+  ]);
+
+  assert.deepEqual(keepEmpty, [
+    { role: "assistant", content: [] },
+    { role: "user", content: [{ type: "text", text: "hello" }] },
+  ]);
+
+  assert.deepEqual(profileOff, [
+    { role: "user", content: [{ type: "input_text", text: "hello" }] },
+  ]);
+});
