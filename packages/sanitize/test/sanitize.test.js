@@ -254,3 +254,28 @@ test("sanitizeMessages option matrix stays deterministic", () => {
     { role: "user", content: [{ type: "input_text", text: "hello" }] },
   ]);
 });
+
+test("sanitizeMessages normalizes mixed multimodal blocks by provider", () => {
+  const anthropic = sanitizeMessages(
+    [
+      {
+        role: "user",
+        content: [
+          { type: "image_url", image_url: "https://example.com/x.png" },
+          { type: "text", text: "look at this" },
+        ],
+      },
+    ],
+    { provider: "anthropic" },
+  );
+
+  assert.deepEqual(anthropic, [
+    {
+      role: "user",
+      content: [
+        { type: "image", source: { type: "url", url: "https://example.com/x.png" } },
+        { type: "text", text: "look at this" },
+      ],
+    },
+  ]);
+});

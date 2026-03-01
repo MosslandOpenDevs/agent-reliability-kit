@@ -79,4 +79,4 @@ cd packages/sanitize
 npm test
 ```
 
-Test suite includes provider profile behavior, profileMode bypass, option-matrix determinism, and large-message deterministic sanitization.
+Test suite includes provider profile behavior, profileMode bypass, option-matrix determinism, mixed multimodal normalization, and large-message deterministic sanitization.
