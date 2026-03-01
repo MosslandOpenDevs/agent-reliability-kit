@@ -178,6 +178,29 @@ export function sanitizeMessages(messages, options = {}) {
 }
 
 /**
+ * Summarize sanitize impact for observability/debug UX.
+ *
+ * @param {unknown} originalMessages
+ * @param {Array<{ content?: unknown[] }>} sanitizedMessages
+ * @returns {{ inputMessages: number, outputMessages: number, removedMessages: number, outputBlocks: number }}
+ */
+export function summarizeSanitizeImpact(originalMessages, sanitizedMessages) {
+  const inputMessages = Array.isArray(originalMessages) ? originalMessages.length : 0;
+  const outputMessages = Array.isArray(sanitizedMessages) ? sanitizedMessages.length : 0;
+  const removedMessages = Math.max(0, inputMessages - outputMessages);
+  const outputBlocks = Array.isArray(sanitizedMessages)
+    ? sanitizedMessages.reduce((acc, msg) => acc + (Array.isArray(msg.content) ? msg.content.length : 0), 0)
+    : 0;
+
+  return {
+    inputMessages,
+    outputMessages,
+    removedMessages,
+    outputBlocks,
+  };
+}
+
+/**
  * Run preflight sanitization + provider/global hooks.
  *
  * @param {{ content?: unknown, messages?: unknown } & Record<string, unknown>} payload

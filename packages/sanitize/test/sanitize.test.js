@@ -8,6 +8,7 @@ import {
   registerPreflightGuard,
   clearPreflightGuards,
   sanitizeMessages,
+  summarizeSanitizeImpact,
 } from "../src/index.js";
 
 test("removeEmptyTextBlocks strips empty and whitespace-only text blocks", () => {
@@ -278,4 +279,19 @@ test("sanitizeMessages normalizes mixed multimodal blocks by provider", () => {
       ],
     },
   ]);
+});
+
+test("summarizeSanitizeImpact returns deterministic counters", () => {
+  const original = [
+    { role: "assistant", content: [{ type: "text", text: "   " }] },
+    { role: "user", content: [{ type: "input_text", text: "hello" }] },
+  ];
+  const sanitized = sanitizeMessages(original, { provider: "openai" });
+
+  assert.deepEqual(summarizeSanitizeImpact(original, sanitized), {
+    inputMessages: 2,
+    outputMessages: 1,
+    removedMessages: 1,
+    outputBlocks: 1,
+  });
 });

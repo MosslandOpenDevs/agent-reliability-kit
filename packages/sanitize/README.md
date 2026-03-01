@@ -34,6 +34,9 @@ Runs default sanitization (`content` + `messages`) plus global/provider hooks.
 Provider profile normalization applies to both top-level `content` and `messages[*].content` by default.
 Use `profileMode: "off"` to disable provider profile normalization in preflight.
 
+### `summarizeSanitizeImpact(originalMessages, sanitizedMessages)`
+Returns deterministic counters (`inputMessages`, `outputMessages`, `removedMessages`, `outputBlocks`) for observability and regression checks.
+
 ### `clearPreflightGuards()`
 Clears all registered hooks (useful for tests).
 
