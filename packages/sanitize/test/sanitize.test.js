@@ -171,3 +171,21 @@ test("runPreflightGuards applies global and provider-specific hooks", () => {
 
   clearPreflightGuards();
 });
+
+test("runPreflightGuards keeps original provider block types when profileMode is off", () => {
+  clearPreflightGuards();
+
+  const result = runPreflightGuards(
+    {
+      content: ["ok"],
+      messages: [
+        { role: "user", content: [{ type: "input_text", text: "hello" }] },
+      ],
+    },
+    { provider: "openai", profileMode: "off" },
+  );
+
+  assert.deepEqual(result.messages, [
+    { role: "user", content: [{ type: "input_text", text: "hello" }] },
+  ]);
+});

@@ -29,8 +29,9 @@ Set `profileMode: "off"` to disable provider normalization and keep original blo
 ### `registerPreflightGuard(provider, hook)`
 Registers preflight hooks by provider name. Use `"*"` for global hooks.
 
-### `runPreflightGuards(payload, { provider })`
+### `runPreflightGuards(payload, { provider, keepEmptyMessages, profileMode })`
 Runs default sanitization (`content` + `messages`) plus global/provider hooks.
+Use `profileMode: "off"` to disable provider profile normalization in preflight.
 
 ### `clearPreflightGuards()`
 Clears all registered hooks (useful for tests).
