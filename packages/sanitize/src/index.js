@@ -120,9 +120,32 @@ export function clearPreflightGuards() {
 }
 
 /**
+ * Normalize message arrays into a safe, provider-friendly shape.
+ * - keeps role when provided
+ * - normalizes each message.content through block normalization
+ * - removes messages whose normalized content is empty
+ *
+ * @param {unknown} messages
+ * @returns {Array<{ role?: string, content: ContentBlock[] } & Record<string, unknown>>}
+ */
+export function sanitizeMessages(messages) {
+  if (!Array.isArray(messages)) {
+    return [];
+  }
+
+  return messages
+    .filter((message) => isObject(message))
+    .map((message) => ({
+      ...message,
+      content: removeEmptyTextBlocks(normalizeContentBlocks(message.content)),
+    }))
+    .filter((message) => Array.isArray(message.content) && message.content.length > 0);
+}
+
+/**
  * Run preflight sanitization + provider/global hooks.
  *
- * @param {{ content?: unknown } & Record<string, unknown>} payload
+ * @param {{ content?: unknown, messages?: unknown } & Record<string, unknown>} payload
  * @param {{ provider?: string }} [options]
  * @returns {SanitizedPayload}
  */
@@ -131,6 +154,7 @@ export function runPreflightGuards(payload, options = {}) {
   let sanitized = {
     ...payload,
     content: removeEmptyTextBlocks(normalizeContentBlocks(payload?.content)),
+    messages: sanitizeMessages(payload?.messages),
   };
 
   const hooks = [

@@ -6,6 +6,7 @@ Sanitization module for provider payload safety.
 - Remove empty/whitespace-only text blocks
 - Normalize content block arrays
 - Provider-aware preflight checks
+- Message-array sanitization (`messages[]`) with empty-turn pruning
 
 ## API
 
@@ -19,11 +20,14 @@ Normalizes content into provider-friendly block arrays.
 - `Array<string | object>` -> object blocks (strings become text blocks)
 - unsupported values -> `[]`
 
+### `sanitizeMessages(messages)`
+Normalizes message arrays and removes messages that become empty after sanitization.
+
 ### `registerPreflightGuard(provider, hook)`
 Registers preflight hooks by provider name. Use `"*"` for global hooks.
 
 ### `runPreflightGuards(payload, { provider })`
-Runs default sanitization plus global/provider hooks.
+Runs default sanitization (`content` + `messages`) plus global/provider hooks.
 
 ### `clearPreflightGuards()`
 Clears all registered hooks (useful for tests).

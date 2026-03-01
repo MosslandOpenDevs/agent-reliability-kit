@@ -7,6 +7,7 @@ import {
   runPreflightGuards,
   registerPreflightGuard,
   clearPreflightGuards,
+  sanitizeMessages,
 } from "../src/index.js";
 
 test("removeEmptyTextBlocks strips empty and whitespace-only text blocks", () => {
@@ -51,6 +52,37 @@ test("normalizeContentBlocks keeps already-valid payload blocks unchanged", () =
   assert.equal(normalized[1], validBlocks[1]);
 });
 
+test("sanitizeMessages normalizes message content and removes empty messages", () => {
+  const messages = sanitizeMessages([
+    {
+      role: "user",
+      content: [
+        { type: "text", text: "  " },
+        "Need a safer fallback plan",
+      ],
+    },
+    {
+      role: "assistant",
+      content: [{ type: "text", text: "\n\t" }],
+    },
+    {
+      role: "system",
+      content: [{ type: "tool_result", data: { ok: true } }],
+    },
+  ]);
+
+  assert.deepEqual(messages, [
+    {
+      role: "user",
+      content: [{ type: "text", text: "Need a safer fallback plan" }],
+    },
+    {
+      role: "system",
+      content: [{ type: "tool_result", data: { ok: true } }],
+    },
+  ]);
+});
+
 test("runPreflightGuards applies global and provider-specific hooks", () => {
   clearPreflightGuards();
 
@@ -70,12 +102,17 @@ test("runPreflightGuards applies global and provider-specific hooks", () => {
         { type: "text", text: "   " },
         "hello",
       ],
+      messages: [
+        { role: "assistant", content: [{ type: "text", text: "   " }] },
+        { role: "user", content: ["deploy with canary"] },
+      ],
     },
     { provider: "openai" },
   );
 
   assert.deepEqual(result, {
     content: [{ type: "text", text: "hello" }],
+    messages: [{ role: "user", content: [{ type: "text", text: "deploy with canary" }] }],
     globalApplied: true,
     providerApplied: true,
   });
