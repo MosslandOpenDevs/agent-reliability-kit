@@ -126,19 +126,28 @@ export function clearPreflightGuards() {
  * - removes messages whose normalized content is empty
  *
  * @param {unknown} messages
+ * @param {{ keepEmptyMessages?: boolean }} [options]
  * @returns {Array<{ role?: string, content: ContentBlock[] } & Record<string, unknown>>}
  */
-export function sanitizeMessages(messages) {
+export function sanitizeMessages(messages, options = {}) {
   if (!Array.isArray(messages)) {
     return [];
   }
 
-  return messages
+  const keepEmptyMessages = options.keepEmptyMessages === true;
+
+  const normalizedMessages = messages
     .filter((message) => isObject(message))
     .map((message) => ({
       ...message,
       content: removeEmptyTextBlocks(normalizeContentBlocks(message.content)),
-    }))
+    }));
+
+  if (keepEmptyMessages) {
+    return normalizedMessages;
+  }
+
+  return normalizedMessages
     .filter((message) => Array.isArray(message.content) && message.content.length > 0);
 }
 
@@ -146,7 +155,7 @@ export function sanitizeMessages(messages) {
  * Run preflight sanitization + provider/global hooks.
  *
  * @param {{ content?: unknown, messages?: unknown } & Record<string, unknown>} payload
- * @param {{ provider?: string }} [options]
+ * @param {{ provider?: string, keepEmptyMessages?: boolean }} [options]
  * @returns {SanitizedPayload}
  */
 export function runPreflightGuards(payload, options = {}) {
@@ -154,7 +163,9 @@ export function runPreflightGuards(payload, options = {}) {
   let sanitized = {
     ...payload,
     content: removeEmptyTextBlocks(normalizeContentBlocks(payload?.content)),
-    messages: sanitizeMessages(payload?.messages),
+    messages: sanitizeMessages(payload?.messages, {
+      keepEmptyMessages: options.keepEmptyMessages === true,
+    }),
   };
 
   const hooks = [

@@ -83,6 +83,21 @@ test("sanitizeMessages normalizes message content and removes empty messages", (
   ]);
 });
 
+test("sanitizeMessages can keep empty messages when requested", () => {
+  const messages = sanitizeMessages(
+    [
+      { role: "assistant", content: [{ type: "text", text: "   " }] },
+      { role: "user", content: ["ship safely"] },
+    ],
+    { keepEmptyMessages: true },
+  );
+
+  assert.deepEqual(messages, [
+    { role: "assistant", content: [] },
+    { role: "user", content: [{ type: "text", text: "ship safely" }] },
+  ]);
+});
+
 test("runPreflightGuards applies global and provider-specific hooks", () => {
   clearPreflightGuards();
 
@@ -107,12 +122,15 @@ test("runPreflightGuards applies global and provider-specific hooks", () => {
         { role: "user", content: ["deploy with canary"] },
       ],
     },
-    { provider: "openai" },
+    { provider: "openai", keepEmptyMessages: true },
   );
 
   assert.deepEqual(result, {
     content: [{ type: "text", text: "hello" }],
-    messages: [{ role: "user", content: [{ type: "text", text: "deploy with canary" }] }],
+    messages: [
+      { role: "assistant", content: [] },
+      { role: "user", content: [{ type: "text", text: "deploy with canary" }] },
+    ],
     globalApplied: true,
     providerApplied: true,
   });

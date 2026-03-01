@@ -20,8 +20,9 @@ Normalizes content into provider-friendly block arrays.
 - `Array<string | object>` -> object blocks (strings become text blocks)
 - unsupported values -> `[]`
 
-### `sanitizeMessages(messages)`
+### `sanitizeMessages(messages, { keepEmptyMessages })`
 Normalizes message arrays and removes messages that become empty after sanitization.
+Set `keepEmptyMessages: true` to preserve empty turns when downstream consumers require positional alignment.
 
 ### `registerPreflightGuard(provider, hook)`
 Registers preflight hooks by provider name. Use `"*"` for global hooks.
