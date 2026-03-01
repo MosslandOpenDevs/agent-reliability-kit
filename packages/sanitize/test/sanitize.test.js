@@ -295,3 +295,23 @@ test("summarizeSanitizeImpact returns deterministic counters", () => {
     outputBlocks: 1,
   });
 });
+
+test("runPreflightGuards can include sanitize impact in payload", () => {
+  const result = runPreflightGuards(
+    {
+      content: ["ok"],
+      messages: [
+        { role: "assistant", content: [{ type: "text", text: "   " }] },
+        { role: "user", content: [{ type: "input_text", text: "hello" }] },
+      ],
+    },
+    { provider: "openai", includeImpact: true },
+  );
+
+  assert.deepEqual(result.sanitizeImpact, {
+    inputMessages: 2,
+    outputMessages: 1,
+    removedMessages: 1,
+    outputBlocks: 1,
+  });
+});

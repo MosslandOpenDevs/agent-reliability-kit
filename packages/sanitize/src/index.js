@@ -204,23 +204,29 @@ export function summarizeSanitizeImpact(originalMessages, sanitizedMessages) {
  * Run preflight sanitization + provider/global hooks.
  *
  * @param {{ content?: unknown, messages?: unknown } & Record<string, unknown>} payload
- * @param {{ provider?: string, keepEmptyMessages?: boolean, profileMode?: "basic" | "off" }} [options]
+ * @param {{ provider?: string, keepEmptyMessages?: boolean, profileMode?: "basic" | "off", includeImpact?: boolean }} [options]
  * @returns {SanitizedPayload}
  */
 export function runPreflightGuards(payload, options = {}) {
   const provider = options.provider || DEFAULT_PROVIDER;
   const profileMode = options.profileMode || "basic";
 
+  const messages = sanitizeMessages(payload?.messages, {
+    keepEmptyMessages: options.keepEmptyMessages === true,
+    provider,
+    profileMode,
+  });
+
   let sanitized = {
     ...payload,
     content: removeEmptyTextBlocks(normalizeContentBlocks(payload?.content))
       .map((block) => (profileMode === "off" ? block : normalizeProviderContentBlock(provider, block))),
-    messages: sanitizeMessages(payload?.messages, {
-      keepEmptyMessages: options.keepEmptyMessages === true,
-      provider,
-      profileMode,
-    }),
+    messages,
   };
+
+  if (options.includeImpact === true) {
+    sanitized.sanitizeImpact = summarizeSanitizeImpact(payload?.messages, messages);
+  }
 
   const hooks = [
     ...(preflightGuardHooks.get(DEFAULT_PROVIDER) || []),
