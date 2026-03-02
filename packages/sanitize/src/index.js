@@ -209,13 +209,16 @@ export function summarizeSanitizeImpact(originalMessages, sanitizedMessages) {
     }, {});
   };
 
+  const removedBlocks = Math.max(0, inputBlocks - outputBlocks);
+
   return {
     inputMessages,
     outputMessages,
     removedMessages,
     inputBlocks,
     outputBlocks,
-    removedBlocks: Math.max(0, inputBlocks - outputBlocks),
+    removedBlocks,
+    removedBlockRatio: inputBlocks > 0 ? Number((removedBlocks / inputBlocks).toFixed(3)) : 0,
     inputRoles: roleCount(originalMessages),
     outputRoles: roleCount(sanitizedMessages),
   };
