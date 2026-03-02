@@ -238,6 +238,7 @@ export function summarizePayloadImpact(originalPayload, sanitizedPayload) {
   return {
     ...messageImpact,
     removedRoles,
+    removedRoleCount: removedRoles.length,
     inputContentBlocks,
     outputContentBlocks,
     removedContentBlocks: Math.max(0, inputContentBlocks - outputContentBlocks),
