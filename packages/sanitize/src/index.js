@@ -215,6 +215,7 @@ export function summarizeSanitizeImpact(originalMessages, sanitizedMessages) {
     inputMessages,
     outputMessages,
     removedMessages,
+    removedMessageRatio: inputMessages > 0 ? Number((removedMessages / inputMessages).toFixed(3)) : 0,
     inputBlocks,
     outputBlocks,
     removedBlocks,
