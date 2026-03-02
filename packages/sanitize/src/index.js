@@ -230,9 +230,14 @@ export function summarizeSanitizeImpact(originalMessages, sanitizedMessages) {
 export function summarizePayloadImpact(originalPayload, sanitizedPayload) {
   const inputContentBlocks = normalizeContentBlocks(originalPayload?.content).length;
   const outputContentBlocks = Array.isArray(sanitizedPayload?.content) ? sanitizedPayload.content.length : 0;
+  const messageImpact = summarizeSanitizeImpact(originalPayload?.messages, sanitizedPayload?.messages);
+
+  const removedRoles = Object.keys(messageImpact.inputRoles)
+    .filter((role) => (messageImpact.inputRoles[role] || 0) > (messageImpact.outputRoles[role] || 0));
 
   return {
-    ...summarizeSanitizeImpact(originalPayload?.messages, sanitizedPayload?.messages),
+    ...messageImpact,
+    removedRoles,
     inputContentBlocks,
     outputContentBlocks,
     removedContentBlocks: Math.max(0, inputContentBlocks - outputContentBlocks),
