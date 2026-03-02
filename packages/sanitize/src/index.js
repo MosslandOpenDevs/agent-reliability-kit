@@ -195,6 +195,20 @@ export function summarizeSanitizeImpact(originalMessages, sanitizedMessages) {
     ? sanitizedMessages.reduce((acc, msg) => acc + (Array.isArray(msg.content) ? msg.content.length : 0), 0)
     : 0;
 
+  const roleCount = (messages) => {
+    if (!Array.isArray(messages)) {
+      return {};
+    }
+
+    return messages.reduce((acc, message) => {
+      const key = typeof message?.role === "string" && message.role.trim().length > 0
+        ? message.role
+        : "unknown";
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+  };
+
   return {
     inputMessages,
     outputMessages,
@@ -202,6 +216,8 @@ export function summarizeSanitizeImpact(originalMessages, sanitizedMessages) {
     inputBlocks,
     outputBlocks,
     removedBlocks: Math.max(0, inputBlocks - outputBlocks),
+    inputRoles: roleCount(originalMessages),
+    outputRoles: roleCount(sanitizedMessages),
   };
 }
 
