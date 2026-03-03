@@ -317,6 +317,25 @@ test("runPreflightGuards supports custom merge separator", () => {
   ]);
 });
 
+test("runPreflightGuards can trim merged text blocks", () => {
+  clearPreflightGuards();
+
+  const result = runPreflightGuards(
+    {
+      content: ["  alpha", "beta  "],
+      messages: [
+        { role: "user", content: ["  left", "right  "] },
+      ],
+    },
+    { mergeAdjacentText: true, trimMergedText: true },
+  );
+
+  assert.deepEqual(result.content, [{ type: "text", text: "alpha\nbeta" }]);
+  assert.deepEqual(result.messages, [
+    { role: "user", content: [{ type: "text", text: "left\nright" }] },
+  ]);
+});
+
 test("sanitizeMessages handles large message arrays deterministically", () => {
   const messages = Array.from({ length: 1000 }, (_, idx) => ({
     role: "user",
