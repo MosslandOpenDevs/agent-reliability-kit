@@ -26,6 +26,35 @@ function isTextBlock(block) {
 }
 
 /**
+ * Merge consecutive text blocks into a single text block.
+ * Preserves non-text block boundaries.
+ *
+ * @param {ContentBlock[]} blocks
+ * @returns {ContentBlock[]}
+ */
+export function mergeAdjacentTextBlocks(blocks) {
+  if (!Array.isArray(blocks) || blocks.length === 0) {
+    return [];
+  }
+
+  /** @type {ContentBlock[]} */
+  const merged = [];
+
+  for (const block of blocks) {
+    const previous = merged[merged.length - 1];
+
+    if (isTextBlock(previous) && isTextBlock(block)) {
+      previous.text = `${previous.text}\n${block.text}`;
+      continue;
+    }
+
+    merged.push(block);
+  }
+
+  return merged;
+}
+
+/**
  * Remove text blocks whose text value is empty/whitespace-only.
  * Non-text blocks are preserved as-is.
  *
@@ -149,7 +178,7 @@ export function clearPreflightGuards() {
  * - removes messages whose normalized content is empty
  *
  * @param {unknown} messages
- * @param {{ keepEmptyMessages?: boolean, provider?: string, profileMode?: "basic" | "off" }} [options]
+ * @param {{ keepEmptyMessages?: boolean, provider?: string, profileMode?: "basic" | "off", mergeAdjacentText?: boolean }} [options]
  * @returns {Array<{ role?: string, content: ContentBlock[] } & Record<string, unknown>>}
  */
 export function sanitizeMessages(messages, options = {}) {
@@ -161,13 +190,19 @@ export function sanitizeMessages(messages, options = {}) {
   const provider = options.provider || DEFAULT_PROVIDER;
   const profileMode = options.profileMode || "basic";
 
+  const mergeAdjacentText = options.mergeAdjacentText === true;
+
   const normalizedMessages = messages
     .filter((message) => isObject(message))
-    .map((message) => ({
-      ...message,
-      content: removeEmptyTextBlocks(normalizeContentBlocks(message.content))
-        .map((block) => (profileMode === "off" ? block : normalizeProviderContentBlock(provider, block))),
-    }));
+    .map((message) => {
+      const normalizedContent = removeEmptyTextBlocks(normalizeContentBlocks(message.content))
+        .map((block) => (profileMode === "off" ? block : normalizeProviderContentBlock(provider, block)));
+
+      return {
+        ...message,
+        content: mergeAdjacentText ? mergeAdjacentTextBlocks(normalizedContent) : normalizedContent,
+      };
+    });
 
   if (keepEmptyMessages) {
     return normalizedMessages;
@@ -253,7 +288,7 @@ export function summarizePayloadImpact(originalPayload, sanitizedPayload) {
  * Run preflight sanitization + provider/global hooks.
  *
  * @param {{ content?: unknown, messages?: unknown } & Record<string, unknown>} payload
- * @param {{ provider?: string, keepEmptyMessages?: boolean, profileMode?: "basic" | "off", includeImpact?: boolean }} [options]
+ * @param {{ provider?: string, keepEmptyMessages?: boolean, profileMode?: "basic" | "off", includeImpact?: boolean, mergeAdjacentText?: boolean }} [options]
  * @returns {SanitizedPayload}
  */
 export function runPreflightGuards(payload, options = {}) {
@@ -264,12 +299,17 @@ export function runPreflightGuards(payload, options = {}) {
     keepEmptyMessages: options.keepEmptyMessages === true,
     provider,
     profileMode,
+    mergeAdjacentText: options.mergeAdjacentText === true,
   });
+
+  const normalizedTopLevelContent = removeEmptyTextBlocks(normalizeContentBlocks(payload?.content))
+    .map((block) => (profileMode === "off" ? block : normalizeProviderContentBlock(provider, block)));
 
   let sanitized = {
     ...payload,
-    content: removeEmptyTextBlocks(normalizeContentBlocks(payload?.content))
-      .map((block) => (profileMode === "off" ? block : normalizeProviderContentBlock(provider, block))),
+    content: options.mergeAdjacentText === true
+      ? mergeAdjacentTextBlocks(normalizedTopLevelContent)
+      : normalizedTopLevelContent,
     messages,
   };
 

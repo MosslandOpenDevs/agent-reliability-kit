@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   removeEmptyTextBlocks,
   normalizeContentBlocks,
+  mergeAdjacentTextBlocks,
   runPreflightGuards,
   registerPreflightGuard,
   clearPreflightGuards,
@@ -54,6 +55,22 @@ test("normalizeContentBlocks keeps already-valid payload blocks unchanged", () =
   assert.equal(normalized[1], validBlocks[1]);
 });
 
+test("mergeAdjacentTextBlocks joins contiguous text entries", () => {
+  const merged = mergeAdjacentTextBlocks([
+    { type: "text", text: "first" },
+    { type: "text", text: "second" },
+    { type: "image", url: "https://example.com/x.png" },
+    { type: "text", text: "third" },
+    { type: "text", text: "fourth" },
+  ]);
+
+  assert.deepEqual(merged, [
+    { type: "text", text: "first\nsecond" },
+    { type: "image", url: "https://example.com/x.png" },
+    { type: "text", text: "third\nfourth" },
+  ]);
+});
+
 test("sanitizeMessages normalizes message content and removes empty messages", () => {
   const messages = sanitizeMessages([
     {
@@ -97,6 +114,34 @@ test("sanitizeMessages can keep empty messages when requested", () => {
   assert.deepEqual(messages, [
     { role: "assistant", content: [] },
     { role: "user", content: [{ type: "text", text: "ship safely" }] },
+  ]);
+});
+
+test("sanitizeMessages can merge adjacent text blocks", () => {
+  const messages = sanitizeMessages(
+    [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "hello" },
+          { type: "text", text: "world" },
+          { type: "tool_result", data: { ok: true } },
+          { type: "text", text: "tail" },
+        ],
+      },
+    ],
+    { mergeAdjacentText: true },
+  );
+
+  assert.deepEqual(messages, [
+    {
+      role: "user",
+      content: [
+        { type: "text", text: "hello\nworld" },
+        { type: "tool_result", data: { ok: true } },
+        { type: "text", text: "tail" },
+      ],
+    },
   ]);
 });
 
@@ -209,6 +254,35 @@ test("runPreflightGuards keeps original provider block types when profileMode is
   assert.deepEqual(result.content, [{ type: "input_text", text: "hello" }]);
   assert.deepEqual(result.messages, [
     { role: "user", content: [{ type: "input_text", text: "hello" }] },
+  ]);
+});
+
+test("runPreflightGuards can merge adjacent text blocks across payload", () => {
+  clearPreflightGuards();
+
+  const result = runPreflightGuards(
+    {
+      content: ["alpha", "beta"],
+      messages: [
+        {
+          role: "user",
+          content: ["hello", "world", { type: "tool_result", data: { ok: true } }, "tail"],
+        },
+      ],
+    },
+    { mergeAdjacentText: true },
+  );
+
+  assert.deepEqual(result.content, [{ type: "text", text: "alpha\nbeta" }]);
+  assert.deepEqual(result.messages, [
+    {
+      role: "user",
+      content: [
+        { type: "text", text: "hello\nworld" },
+        { type: "tool_result", data: { ok: true } },
+        { type: "text", text: "tail" },
+      ],
+    },
   ]);
 });
 
