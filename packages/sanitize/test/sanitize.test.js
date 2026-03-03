@@ -71,6 +71,18 @@ test("mergeAdjacentTextBlocks joins contiguous text entries", () => {
   ]);
 });
 
+test("mergeAdjacentTextBlocks supports custom separators", () => {
+  const merged = mergeAdjacentTextBlocks(
+    [
+      { type: "text", text: "first" },
+      { type: "text", text: "second" },
+    ],
+    " | ",
+  );
+
+  assert.deepEqual(merged, [{ type: "text", text: "first | second" }]);
+});
+
 test("sanitizeMessages normalizes message content and removes empty messages", () => {
   const messages = sanitizeMessages([
     {
@@ -283,6 +295,25 @@ test("runPreflightGuards can merge adjacent text blocks across payload", () => {
         { type: "text", text: "tail" },
       ],
     },
+  ]);
+});
+
+test("runPreflightGuards supports custom merge separator", () => {
+  clearPreflightGuards();
+
+  const result = runPreflightGuards(
+    {
+      content: ["alpha", "beta"],
+      messages: [
+        { role: "user", content: ["left", "right"] },
+      ],
+    },
+    { mergeAdjacentText: true, mergeSeparator: " | " },
+  );
+
+  assert.deepEqual(result.content, [{ type: "text", text: "alpha | beta" }]);
+  assert.deepEqual(result.messages, [
+    { role: "user", content: [{ type: "text", text: "left | right" }] },
   ]);
 });
 

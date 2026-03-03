@@ -32,7 +32,7 @@ function isTextBlock(block) {
  * @param {ContentBlock[]} blocks
  * @returns {ContentBlock[]}
  */
-export function mergeAdjacentTextBlocks(blocks) {
+export function mergeAdjacentTextBlocks(blocks, separator = "\n") {
   if (!Array.isArray(blocks) || blocks.length === 0) {
     return [];
   }
@@ -44,7 +44,7 @@ export function mergeAdjacentTextBlocks(blocks) {
     const previous = merged[merged.length - 1];
 
     if (isTextBlock(previous) && isTextBlock(block)) {
-      previous.text = `${previous.text}\n${block.text}`;
+      previous.text = `${previous.text}${separator}${block.text}`;
       continue;
     }
 
@@ -178,7 +178,7 @@ export function clearPreflightGuards() {
  * - removes messages whose normalized content is empty
  *
  * @param {unknown} messages
- * @param {{ keepEmptyMessages?: boolean, provider?: string, profileMode?: "basic" | "off", mergeAdjacentText?: boolean }} [options]
+ * @param {{ keepEmptyMessages?: boolean, provider?: string, profileMode?: "basic" | "off", mergeAdjacentText?: boolean, mergeSeparator?: string }} [options]
  * @returns {Array<{ role?: string, content: ContentBlock[] } & Record<string, unknown>>}
  */
 export function sanitizeMessages(messages, options = {}) {
@@ -191,6 +191,7 @@ export function sanitizeMessages(messages, options = {}) {
   const profileMode = options.profileMode || "basic";
 
   const mergeAdjacentText = options.mergeAdjacentText === true;
+  const mergeSeparator = typeof options.mergeSeparator === "string" ? options.mergeSeparator : "\n";
 
   const normalizedMessages = messages
     .filter((message) => isObject(message))
@@ -200,7 +201,7 @@ export function sanitizeMessages(messages, options = {}) {
 
       return {
         ...message,
-        content: mergeAdjacentText ? mergeAdjacentTextBlocks(normalizedContent) : normalizedContent,
+        content: mergeAdjacentText ? mergeAdjacentTextBlocks(normalizedContent, mergeSeparator) : normalizedContent,
       };
     });
 
@@ -288,7 +289,7 @@ export function summarizePayloadImpact(originalPayload, sanitizedPayload) {
  * Run preflight sanitization + provider/global hooks.
  *
  * @param {{ content?: unknown, messages?: unknown } & Record<string, unknown>} payload
- * @param {{ provider?: string, keepEmptyMessages?: boolean, profileMode?: "basic" | "off", includeImpact?: boolean, mergeAdjacentText?: boolean }} [options]
+ * @param {{ provider?: string, keepEmptyMessages?: boolean, profileMode?: "basic" | "off", includeImpact?: boolean, mergeAdjacentText?: boolean, mergeSeparator?: string }} [options]
  * @returns {SanitizedPayload}
  */
 export function runPreflightGuards(payload, options = {}) {
@@ -300,6 +301,7 @@ export function runPreflightGuards(payload, options = {}) {
     provider,
     profileMode,
     mergeAdjacentText: options.mergeAdjacentText === true,
+    mergeSeparator: options.mergeSeparator,
   });
 
   const normalizedTopLevelContent = removeEmptyTextBlocks(normalizeContentBlocks(payload?.content))
@@ -308,7 +310,10 @@ export function runPreflightGuards(payload, options = {}) {
   let sanitized = {
     ...payload,
     content: options.mergeAdjacentText === true
-      ? mergeAdjacentTextBlocks(normalizedTopLevelContent)
+      ? mergeAdjacentTextBlocks(
+        normalizedTopLevelContent,
+        typeof options.mergeSeparator === "string" ? options.mergeSeparator : "\n",
+      )
       : normalizedTopLevelContent,
     messages,
   };
