@@ -336,6 +336,25 @@ test("runPreflightGuards can trim merged text blocks", () => {
   ]);
 });
 
+test("runPreflightGuards can collapse merged whitespace into single spaces", () => {
+  clearPreflightGuards();
+
+  const result = runPreflightGuards(
+    {
+      content: ["alpha   ", "   beta"],
+      messages: [
+        { role: "user", content: ["left   ", "   right"] },
+      ],
+    },
+    { mergeAdjacentText: true, collapseMergedWhitespace: true },
+  );
+
+  assert.deepEqual(result.content, [{ type: "text", text: "alpha beta" }]);
+  assert.deepEqual(result.messages, [
+    { role: "user", content: [{ type: "text", text: "left right" }] },
+  ]);
+});
+
 test("sanitizeMessages handles large message arrays deterministically", () => {
   const messages = Array.from({ length: 1000 }, (_, idx) => ({
     role: "user",

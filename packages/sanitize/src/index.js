@@ -178,7 +178,7 @@ export function clearPreflightGuards() {
  * - removes messages whose normalized content is empty
  *
  * @param {unknown} messages
- * @param {{ keepEmptyMessages?: boolean, provider?: string, profileMode?: "basic" | "off", mergeAdjacentText?: boolean, mergeSeparator?: string, trimMergedText?: boolean }} [options]
+ * @param {{ keepEmptyMessages?: boolean, provider?: string, profileMode?: "basic" | "off", mergeAdjacentText?: boolean, mergeSeparator?: string, trimMergedText?: boolean, collapseMergedWhitespace?: boolean }} [options]
  * @returns {Array<{ role?: string, content: ContentBlock[] } & Record<string, unknown>>}
  */
 export function sanitizeMessages(messages, options = {}) {
@@ -193,6 +193,7 @@ export function sanitizeMessages(messages, options = {}) {
   const mergeAdjacentText = options.mergeAdjacentText === true;
   const mergeSeparator = typeof options.mergeSeparator === "string" ? options.mergeSeparator : "\n";
   const trimMergedText = options.trimMergedText === true;
+  const collapseMergedWhitespace = options.collapseMergedWhitespace === true;
 
   const normalizedMessages = messages
     .filter((message) => isObject(message))
@@ -204,11 +205,25 @@ export function sanitizeMessages(messages, options = {}) {
         ? mergeAdjacentTextBlocks(normalizedContent, mergeSeparator)
         : normalizedContent;
 
+      const normalizedMergedContent = mergedContent.map((block) => {
+        if (!isTextBlock(block)) {
+          return block;
+        }
+
+        let text = block.text;
+        if (trimMergedText) {
+          text = text.trim();
+        }
+        if (collapseMergedWhitespace) {
+          text = text.replace(/\s+/g, " ").trim();
+        }
+
+        return { ...block, text };
+      });
+
       return {
         ...message,
-        content: trimMergedText
-          ? mergedContent.map((block) => (isTextBlock(block) ? { ...block, text: block.text.trim() } : block))
-          : mergedContent,
+        content: normalizedMergedContent,
       };
     });
 
@@ -296,7 +311,7 @@ export function summarizePayloadImpact(originalPayload, sanitizedPayload) {
  * Run preflight sanitization + provider/global hooks.
  *
  * @param {{ content?: unknown, messages?: unknown } & Record<string, unknown>} payload
- * @param {{ provider?: string, keepEmptyMessages?: boolean, profileMode?: "basic" | "off", includeImpact?: boolean, mergeAdjacentText?: boolean, mergeSeparator?: string, trimMergedText?: boolean }} [options]
+ * @param {{ provider?: string, keepEmptyMessages?: boolean, profileMode?: "basic" | "off", includeImpact?: boolean, mergeAdjacentText?: boolean, mergeSeparator?: string, trimMergedText?: boolean, collapseMergedWhitespace?: boolean }} [options]
  * @returns {SanitizedPayload}
  */
 export function runPreflightGuards(payload, options = {}) {
@@ -310,6 +325,7 @@ export function runPreflightGuards(payload, options = {}) {
     mergeAdjacentText: options.mergeAdjacentText === true,
     mergeSeparator: options.mergeSeparator,
     trimMergedText: options.trimMergedText === true,
+    collapseMergedWhitespace: options.collapseMergedWhitespace === true,
   });
 
   const normalizedTopLevelContent = removeEmptyTextBlocks(normalizeContentBlocks(payload?.content))
@@ -322,11 +338,25 @@ export function runPreflightGuards(payload, options = {}) {
     )
     : normalizedTopLevelContent;
 
+  const normalizedTopLevelMergedContent = mergedTopLevelContent.map((block) => {
+    if (!isTextBlock(block)) {
+      return block;
+    }
+
+    let text = block.text;
+    if (options.trimMergedText === true) {
+      text = text.trim();
+    }
+    if (options.collapseMergedWhitespace === true) {
+      text = text.replace(/\s+/g, " ").trim();
+    }
+
+    return { ...block, text };
+  });
+
   let sanitized = {
     ...payload,
-    content: options.trimMergedText === true
-      ? mergedTopLevelContent.map((block) => (isTextBlock(block) ? { ...block, text: block.text.trim() } : block))
-      : mergedTopLevelContent,
+    content: normalizedTopLevelMergedContent,
     messages,
   };
 
