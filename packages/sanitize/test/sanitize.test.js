@@ -355,6 +355,48 @@ test("runPreflightGuards can collapse merged whitespace into single spaces", () 
   ]);
 });
 
+test("sanitizeMessages can enforce maxTextLength for text blocks", () => {
+  const messages = sanitizeMessages(
+    [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "123456789" },
+          { type: "tool_result", data: { ok: true } },
+        ],
+      },
+    ],
+    { maxTextLength: 5 },
+  );
+
+  assert.deepEqual(messages, [
+    {
+      role: "user",
+      content: [
+        { type: "text", text: "12345" },
+        { type: "tool_result", data: { ok: true } },
+      ],
+    },
+  ]);
+});
+
+test("runPreflightGuards applies maxTextLength to top-level content and messages", () => {
+  const result = runPreflightGuards(
+    {
+      content: ["abcdefghij"],
+      messages: [
+        { role: "user", content: ["1234567"] },
+      ],
+    },
+    { maxTextLength: 4 },
+  );
+
+  assert.deepEqual(result.content, [{ type: "text", text: "abcd" }]);
+  assert.deepEqual(result.messages, [
+    { role: "user", content: [{ type: "text", text: "1234" }] },
+  ]);
+});
+
 test("sanitizeMessages handles large message arrays deterministically", () => {
   const messages = Array.from({ length: 1000 }, (_, idx) => ({
     role: "user",
