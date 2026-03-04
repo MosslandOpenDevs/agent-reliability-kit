@@ -367,6 +367,10 @@ export function summarizePayloadImpact(originalPayload, sanitizedPayload) {
   const removedContentBlocks = Math.max(0, inputContentBlocks - outputContentBlocks);
   const removedContentTextChars = Math.max(0, inputContentTextChars - outputContentTextChars);
 
+  const inputTotalTextChars = messageImpact.inputTextChars + inputContentTextChars;
+  const outputTotalTextChars = messageImpact.outputTextChars + outputContentTextChars;
+  const removedTotalTextChars = Math.max(0, inputTotalTextChars - outputTotalTextChars);
+
   return {
     ...messageImpact,
     removedRoles,
@@ -379,6 +383,10 @@ export function summarizePayloadImpact(originalPayload, sanitizedPayload) {
     outputContentTextChars,
     removedContentTextChars,
     removedContentTextCharRatio: inputContentTextChars > 0 ? Number((removedContentTextChars / inputContentTextChars).toFixed(3)) : 0,
+    inputTotalTextChars,
+    outputTotalTextChars,
+    removedTotalTextChars,
+    removedTotalTextCharRatio: inputTotalTextChars > 0 ? Number((removedTotalTextChars / inputTotalTextChars).toFixed(3)) : 0,
   };
 }
 
