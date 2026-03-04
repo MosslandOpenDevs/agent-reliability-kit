@@ -367,6 +367,10 @@ export function summarizePayloadImpact(originalPayload, sanitizedPayload) {
   const removedContentBlocks = Math.max(0, inputContentBlocks - outputContentBlocks);
   const removedContentTextChars = Math.max(0, inputContentTextChars - outputContentTextChars);
 
+  const inputTotalBlocks = messageImpact.inputBlocks + inputContentBlocks;
+  const outputTotalBlocks = messageImpact.outputBlocks + outputContentBlocks;
+  const removedTotalBlocks = Math.max(0, inputTotalBlocks - outputTotalBlocks);
+
   const inputTotalTextChars = messageImpact.inputTextChars + inputContentTextChars;
   const outputTotalTextChars = messageImpact.outputTextChars + outputContentTextChars;
   const removedTotalTextChars = Math.max(0, inputTotalTextChars - outputTotalTextChars);
@@ -383,6 +387,10 @@ export function summarizePayloadImpact(originalPayload, sanitizedPayload) {
     outputContentTextChars,
     removedContentTextChars,
     removedContentTextCharRatio: inputContentTextChars > 0 ? Number((removedContentTextChars / inputContentTextChars).toFixed(3)) : 0,
+    inputTotalBlocks,
+    outputTotalBlocks,
+    removedTotalBlocks,
+    removedTotalBlockRatio: inputTotalBlocks > 0 ? Number((removedTotalBlocks / inputTotalBlocks).toFixed(3)) : 0,
     inputTotalTextChars,
     outputTotalTextChars,
     removedTotalTextChars,
