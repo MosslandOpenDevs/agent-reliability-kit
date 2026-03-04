@@ -297,6 +297,27 @@ export function summarizeSanitizeImpact(originalMessages, sanitizedMessages) {
 
   const removedBlocks = Math.max(0, inputBlocks - outputBlocks);
 
+  const countTextChars = (messages) => {
+    if (!Array.isArray(messages)) {
+      return 0;
+    }
+
+    return messages.reduce((acc, message) => {
+      const blocks = normalizeContentBlocks(message?.content);
+      const textChars = blocks.reduce((sum, block) => {
+        if (!isTextBlock(block)) {
+          return sum;
+        }
+        return sum + block.text.length;
+      }, 0);
+      return acc + textChars;
+    }, 0);
+  };
+
+  const inputTextChars = countTextChars(originalMessages);
+  const outputTextChars = countTextChars(sanitizedMessages);
+  const removedTextChars = Math.max(0, inputTextChars - outputTextChars);
+
   return {
     inputMessages,
     outputMessages,
@@ -306,6 +327,10 @@ export function summarizeSanitizeImpact(originalMessages, sanitizedMessages) {
     outputBlocks,
     removedBlocks,
     removedBlockRatio: inputBlocks > 0 ? Number((removedBlocks / inputBlocks).toFixed(3)) : 0,
+    inputTextChars,
+    outputTextChars,
+    removedTextChars,
+    removedTextCharRatio: inputTextChars > 0 ? Number((removedTextChars / inputTextChars).toFixed(3)) : 0,
     inputRoles: roleCount(originalMessages),
     outputRoles: roleCount(sanitizedMessages),
   };
@@ -318,12 +343,26 @@ export function summarizeSanitizeImpact(originalMessages, sanitizedMessages) {
  * @param {{ content?: unknown, messages?: unknown }} sanitizedPayload
  */
 export function summarizePayloadImpact(originalPayload, sanitizedPayload) {
-  const inputContentBlocks = normalizeContentBlocks(originalPayload?.content).length;
-  const outputContentBlocks = Array.isArray(sanitizedPayload?.content) ? sanitizedPayload.content.length : 0;
+  const inputContent = normalizeContentBlocks(originalPayload?.content);
+  const outputContent = Array.isArray(sanitizedPayload?.content) ? sanitizedPayload.content : [];
+  const inputContentBlocks = inputContent.length;
+  const outputContentBlocks = outputContent.length;
   const messageImpact = summarizeSanitizeImpact(originalPayload?.messages, sanitizedPayload?.messages);
 
   const removedRoles = Object.keys(messageImpact.inputRoles)
     .filter((role) => (messageImpact.inputRoles[role] || 0) > (messageImpact.outputRoles[role] || 0));
+
+  const countTextChars = (blocks) => (Array.isArray(blocks)
+    ? blocks.reduce((acc, block) => {
+      if (!isTextBlock(block)) {
+        return acc;
+      }
+      return acc + block.text.length;
+    }, 0)
+    : 0);
+
+  const inputContentTextChars = countTextChars(inputContent);
+  const outputContentTextChars = countTextChars(outputContent);
 
   return {
     ...messageImpact,
@@ -332,6 +371,9 @@ export function summarizePayloadImpact(originalPayload, sanitizedPayload) {
     inputContentBlocks,
     outputContentBlocks,
     removedContentBlocks: Math.max(0, inputContentBlocks - outputContentBlocks),
+    inputContentTextChars,
+    outputContentTextChars,
+    removedContentTextChars: Math.max(0, inputContentTextChars - outputContentTextChars),
   };
 }
 

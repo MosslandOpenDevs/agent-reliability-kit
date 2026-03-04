@@ -545,6 +545,10 @@ test("summarizeSanitizeImpact returns deterministic counters", () => {
     outputBlocks: 1,
     removedBlocks: 1,
     removedBlockRatio: 0.5,
+    inputTextChars: 3,
+    outputTextChars: 5,
+    removedTextChars: 0,
+    removedTextCharRatio: 0,
     inputRoles: { assistant: 1, user: 1 },
     outputRoles: { user: 1 },
   });
@@ -573,6 +577,10 @@ test("summarizePayloadImpact includes top-level content counters", () => {
     outputBlocks: 1,
     removedBlocks: 1,
     removedBlockRatio: 0.5,
+    inputTextChars: 3,
+    outputTextChars: 5,
+    removedTextChars: 0,
+    removedTextCharRatio: 0,
     inputRoles: { assistant: 1, user: 1 },
     outputRoles: { user: 1 },
     removedRoles: ['assistant'],
@@ -580,6 +588,9 @@ test("summarizePayloadImpact includes top-level content counters", () => {
     inputContentBlocks: 2,
     outputContentBlocks: 1,
     removedContentBlocks: 1,
+    inputContentTextChars: 8,
+    outputContentTextChars: 5,
+    removedContentTextChars: 3,
   });
 });
 
@@ -604,6 +615,10 @@ test("runPreflightGuards can include sanitize impact in payload", () => {
     outputBlocks: 1,
     removedBlocks: 1,
     removedBlockRatio: 0.5,
+    inputTextChars: 3,
+    outputTextChars: 5,
+    removedTextChars: 0,
+    removedTextCharRatio: 0,
     inputRoles: { assistant: 1, user: 1 },
     outputRoles: { user: 1 },
     removedRoles: ['assistant'],
@@ -611,5 +626,8 @@ test("runPreflightGuards can include sanitize impact in payload", () => {
     inputContentBlocks: 2,
     outputContentBlocks: 1,
     removedContentBlocks: 1,
+    inputContentTextChars: 5,
+    outputContentTextChars: 2,
+    removedContentTextChars: 3,
   });
 });
