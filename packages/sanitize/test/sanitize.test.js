@@ -588,9 +588,11 @@ test("summarizePayloadImpact includes top-level content counters", () => {
     inputContentBlocks: 2,
     outputContentBlocks: 1,
     removedContentBlocks: 1,
+    removedContentBlockRatio: 0.5,
     inputContentTextChars: 8,
     outputContentTextChars: 5,
     removedContentTextChars: 3,
+    removedContentTextCharRatio: 0.375,
   });
 });
 
@@ -626,8 +628,10 @@ test("runPreflightGuards can include sanitize impact in payload", () => {
     inputContentBlocks: 2,
     outputContentBlocks: 1,
     removedContentBlocks: 1,
+    removedContentBlockRatio: 0.5,
     inputContentTextChars: 5,
     outputContentTextChars: 2,
     removedContentTextChars: 3,
+    removedContentTextCharRatio: 0.6,
   });
 });

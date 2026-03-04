@@ -364,16 +364,21 @@ export function summarizePayloadImpact(originalPayload, sanitizedPayload) {
   const inputContentTextChars = countTextChars(inputContent);
   const outputContentTextChars = countTextChars(outputContent);
 
+  const removedContentBlocks = Math.max(0, inputContentBlocks - outputContentBlocks);
+  const removedContentTextChars = Math.max(0, inputContentTextChars - outputContentTextChars);
+
   return {
     ...messageImpact,
     removedRoles,
     removedRoleCount: removedRoles.length,
     inputContentBlocks,
     outputContentBlocks,
-    removedContentBlocks: Math.max(0, inputContentBlocks - outputContentBlocks),
+    removedContentBlocks,
+    removedContentBlockRatio: inputContentBlocks > 0 ? Number((removedContentBlocks / inputContentBlocks).toFixed(3)) : 0,
     inputContentTextChars,
     outputContentTextChars,
-    removedContentTextChars: Math.max(0, inputContentTextChars - outputContentTextChars),
+    removedContentTextChars,
+    removedContentTextCharRatio: inputContentTextChars > 0 ? Number((removedContentTextChars / inputContentTextChars).toFixed(3)) : 0,
   };
 }
 
