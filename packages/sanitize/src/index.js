@@ -241,9 +241,11 @@ export function sanitizeMessages(messages, options = {}) {
         return limitTextBlockLength({ ...block, text }, maxTextLength);
       });
 
+      const normalizedMergedWithoutEmpty = removeEmptyTextBlocks(normalizedMergedContent);
+
       return {
         ...message,
-        content: normalizedMergedContent,
+        content: normalizedMergedWithoutEmpty,
       };
     });
 
@@ -360,21 +362,23 @@ export function runPreflightGuards(payload, options = {}) {
     )
     : normalizedTopLevelContent;
 
-  const normalizedTopLevelMergedContent = mergedTopLevelContent.map((block) => {
-    if (!isTextBlock(block)) {
-      return block;
-    }
+  const normalizedTopLevelMergedContent = removeEmptyTextBlocks(
+    mergedTopLevelContent.map((block) => {
+      if (!isTextBlock(block)) {
+        return block;
+      }
 
-    let text = block.text;
-    if (options.trimMergedText === true) {
-      text = text.trim();
-    }
-    if (options.collapseMergedWhitespace === true) {
-      text = text.replace(/\s+/g, " ").trim();
-    }
+      let text = block.text;
+      if (options.trimMergedText === true) {
+        text = text.trim();
+      }
+      if (options.collapseMergedWhitespace === true) {
+        text = text.replace(/\s+/g, " ").trim();
+      }
 
-    return limitTextBlockLength({ ...block, text }, maxTextLength);
-  });
+      return limitTextBlockLength({ ...block, text }, maxTextLength);
+    }),
+  );
 
   let sanitized = {
     ...payload,

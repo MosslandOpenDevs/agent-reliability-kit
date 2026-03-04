@@ -397,6 +397,34 @@ test("runPreflightGuards applies maxTextLength to top-level content and messages
   ]);
 });
 
+test("sanitizeMessages drops text blocks truncated to empty strings", () => {
+  const messages = sanitizeMessages(
+    [
+      { role: "user", content: ["abc", { type: "tool_result", data: { ok: true } }] },
+      { role: "assistant", content: ["xyz"] },
+    ],
+    { maxTextLength: 0, keepEmptyMessages: true },
+  );
+
+  assert.deepEqual(messages, [
+    { role: "user", content: [{ type: "tool_result", data: { ok: true } }] },
+    { role: "assistant", content: [] },
+  ]);
+});
+
+test("runPreflightGuards drops top-level text blocks truncated to empty strings", () => {
+  const result = runPreflightGuards(
+    {
+      content: ["abcdef", { type: "tool_result", data: { ok: true } }],
+      messages: [{ role: "user", content: ["hello"] }],
+    },
+    { maxTextLength: 0, keepEmptyMessages: true },
+  );
+
+  assert.deepEqual(result.content, [{ type: "tool_result", data: { ok: true } }]);
+  assert.deepEqual(result.messages, [{ role: "user", content: [] }]);
+});
+
 test("sanitizeMessages handles large message arrays deterministically", () => {
   const messages = Array.from({ length: 1000 }, (_, idx) => ({
     role: "user",
