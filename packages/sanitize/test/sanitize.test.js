@@ -425,6 +425,40 @@ test("runPreflightGuards drops top-level text blocks truncated to empty strings"
   assert.deepEqual(result.messages, [{ role: "user", content: [] }]);
 });
 
+test("sanitizeMessages can cap block count per message", () => {
+  const messages = sanitizeMessages(
+    [
+      {
+        role: "user",
+        content: ["one", "two", { type: "tool_result", data: { ok: true } }],
+      },
+    ],
+    { maxBlockCount: 1 },
+  );
+
+  assert.deepEqual(messages, [
+    { role: "user", content: [{ type: "text", text: "one" }] },
+  ]);
+});
+
+test("runPreflightGuards can cap top-level and message block counts", () => {
+  const result = runPreflightGuards(
+    {
+      content: ["alpha", "beta", { type: "tool_result", data: { ok: true } }],
+      messages: [{ role: "user", content: ["one", "two", "three"] }],
+    },
+    { maxBlockCount: 2 },
+  );
+
+  assert.deepEqual(result.content, [
+    { type: "text", text: "alpha" },
+    { type: "text", text: "beta" },
+  ]);
+  assert.deepEqual(result.messages, [
+    { role: "user", content: [{ type: "text", text: "one" }, { type: "text", text: "two" }] },
+  ]);
+});
+
 test("sanitizeMessages handles large message arrays deterministically", () => {
   const messages = Array.from({ length: 1000 }, (_, idx) => ({
     role: "user",

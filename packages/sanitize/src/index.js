@@ -197,7 +197,7 @@ export function clearPreflightGuards() {
  * - removes messages whose normalized content is empty
  *
  * @param {unknown} messages
- * @param {{ keepEmptyMessages?: boolean, provider?: string, profileMode?: "basic" | "off", mergeAdjacentText?: boolean, mergeSeparator?: string, trimMergedText?: boolean, collapseMergedWhitespace?: boolean, maxTextLength?: number }} [options]
+ * @param {{ keepEmptyMessages?: boolean, provider?: string, profileMode?: "basic" | "off", mergeAdjacentText?: boolean, mergeSeparator?: string, trimMergedText?: boolean, collapseMergedWhitespace?: boolean, maxTextLength?: number, maxBlockCount?: number }} [options]
  * @returns {Array<{ role?: string, content: ContentBlock[] } & Record<string, unknown>>}
  */
 export function sanitizeMessages(messages, options = {}) {
@@ -214,6 +214,9 @@ export function sanitizeMessages(messages, options = {}) {
   const trimMergedText = options.trimMergedText === true;
   const collapseMergedWhitespace = options.collapseMergedWhitespace === true;
   const maxTextLength = Number.isFinite(options.maxTextLength) ? Number(options.maxTextLength) : null;
+  const maxBlockCount = Number.isInteger(options.maxBlockCount) && options.maxBlockCount >= 0
+    ? Number(options.maxBlockCount)
+    : null;
 
   const normalizedMessages = messages
     .filter((message) => isObject(message))
@@ -242,10 +245,13 @@ export function sanitizeMessages(messages, options = {}) {
       });
 
       const normalizedMergedWithoutEmpty = removeEmptyTextBlocks(normalizedMergedContent);
+      const normalizedCappedContent = maxBlockCount !== null
+        ? normalizedMergedWithoutEmpty.slice(0, maxBlockCount)
+        : normalizedMergedWithoutEmpty;
 
       return {
         ...message,
-        content: normalizedMergedWithoutEmpty,
+        content: normalizedCappedContent,
       };
     });
 
@@ -333,13 +339,16 @@ export function summarizePayloadImpact(originalPayload, sanitizedPayload) {
  * Run preflight sanitization + provider/global hooks.
  *
  * @param {{ content?: unknown, messages?: unknown } & Record<string, unknown>} payload
- * @param {{ provider?: string, keepEmptyMessages?: boolean, profileMode?: "basic" | "off", includeImpact?: boolean, mergeAdjacentText?: boolean, mergeSeparator?: string, trimMergedText?: boolean, collapseMergedWhitespace?: boolean, maxTextLength?: number }} [options]
+ * @param {{ provider?: string, keepEmptyMessages?: boolean, profileMode?: "basic" | "off", includeImpact?: boolean, mergeAdjacentText?: boolean, mergeSeparator?: string, trimMergedText?: boolean, collapseMergedWhitespace?: boolean, maxTextLength?: number, maxBlockCount?: number }} [options]
  * @returns {SanitizedPayload}
  */
 export function runPreflightGuards(payload, options = {}) {
   const provider = options.provider || DEFAULT_PROVIDER;
   const profileMode = options.profileMode || "basic";
   const maxTextLength = Number.isFinite(options.maxTextLength) ? Number(options.maxTextLength) : null;
+  const maxBlockCount = Number.isInteger(options.maxBlockCount) && options.maxBlockCount >= 0
+    ? Number(options.maxBlockCount)
+    : null;
 
   const messages = sanitizeMessages(payload?.messages, {
     keepEmptyMessages: options.keepEmptyMessages === true,
@@ -350,6 +359,7 @@ export function runPreflightGuards(payload, options = {}) {
     trimMergedText: options.trimMergedText === true,
     collapseMergedWhitespace: options.collapseMergedWhitespace === true,
     maxTextLength: options.maxTextLength,
+    maxBlockCount: options.maxBlockCount,
   });
 
   const normalizedTopLevelContent = removeEmptyTextBlocks(normalizeContentBlocks(payload?.content))
@@ -380,9 +390,13 @@ export function runPreflightGuards(payload, options = {}) {
     }),
   );
 
+  const normalizedTopLevelCappedContent = maxBlockCount !== null
+    ? normalizedTopLevelMergedContent.slice(0, maxBlockCount)
+    : normalizedTopLevelMergedContent;
+
   let sanitized = {
     ...payload,
-    content: normalizedTopLevelMergedContent,
+    content: normalizedTopLevelCappedContent,
     messages,
   };
 
