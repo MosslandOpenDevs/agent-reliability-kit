@@ -666,6 +666,37 @@ test("runPreflightGuards strips ANSI escape codes in top-level content", () => {
   assert.deepEqual(result.content, [{ type: "text", text: "success" }]);
 });
 
+test("sanitizeMessages can strip HTML tags when enabled", () => {
+  const messages = sanitizeMessages(
+    [
+      {
+        role: "assistant",
+        content: [{ type: "text", text: "<b>alert</b> <i>now</i>" }],
+      },
+    ],
+    { stripHtmlTags: true },
+  );
+
+  assert.deepEqual(messages, [
+    {
+      role: "assistant",
+      content: [{ type: "text", text: "alert now" }],
+    },
+  ]);
+});
+
+test("runPreflightGuards strips HTML tags in top-level content", () => {
+  const result = runPreflightGuards(
+    {
+      content: [{ type: "text", text: "<span>ok</span>" }],
+      messages: [{ role: "user", content: ["ok"] }],
+    },
+    { stripHtmlTags: true },
+  );
+
+  assert.deepEqual(result.content, [{ type: "text", text: "ok" }]);
+});
+
 test("runPreflightGuards can include sanitize impact in payload", () => {
   const result = runPreflightGuards(
     {
