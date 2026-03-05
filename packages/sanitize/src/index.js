@@ -25,6 +25,14 @@ function isTextBlock(block) {
   return isObject(block) && block.type === "text" && typeof block.text === "string";
 }
 
+function stripControlCharacters(text) {
+  if (typeof text !== "string") {
+    return text;
+  }
+
+  return text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
+}
+
 function limitTextBlockLength(block, maxTextLength) {
   if (!isTextBlock(block)) {
     return block;
@@ -197,7 +205,7 @@ export function clearPreflightGuards() {
  * - removes messages whose normalized content is empty
  *
  * @param {unknown} messages
- * @param {{ keepEmptyMessages?: boolean, provider?: string, profileMode?: "basic" | "off", mergeAdjacentText?: boolean, mergeSeparator?: string, trimMergedText?: boolean, collapseMergedWhitespace?: boolean, maxTextLength?: number, maxBlockCount?: number }} [options]
+ * @param {{ keepEmptyMessages?: boolean, provider?: string, profileMode?: "basic" | "off", mergeAdjacentText?: boolean, mergeSeparator?: string, trimMergedText?: boolean, collapseMergedWhitespace?: boolean, stripControlChars?: boolean, maxTextLength?: number, maxBlockCount?: number }} [options]
  * @returns {Array<{ role?: string, content: ContentBlock[] } & Record<string, unknown>>}
  */
 export function sanitizeMessages(messages, options = {}) {
@@ -213,6 +221,7 @@ export function sanitizeMessages(messages, options = {}) {
   const mergeSeparator = typeof options.mergeSeparator === "string" ? options.mergeSeparator : "\n";
   const trimMergedText = options.trimMergedText === true;
   const collapseMergedWhitespace = options.collapseMergedWhitespace === true;
+  const stripControlChars = options.stripControlChars === true;
   const maxTextLength = Number.isFinite(options.maxTextLength) ? Number(options.maxTextLength) : null;
   const maxBlockCount = Number.isInteger(options.maxBlockCount) && options.maxBlockCount >= 0
     ? Number(options.maxBlockCount)
@@ -239,6 +248,9 @@ export function sanitizeMessages(messages, options = {}) {
         }
         if (collapseMergedWhitespace) {
           text = text.replace(/\s+/g, " ").trim();
+        }
+        if (stripControlChars) {
+          text = stripControlCharacters(text);
         }
 
         return limitTextBlockLength({ ...block, text }, maxTextLength);
@@ -402,7 +414,7 @@ export function summarizePayloadImpact(originalPayload, sanitizedPayload) {
  * Run preflight sanitization + provider/global hooks.
  *
  * @param {{ content?: unknown, messages?: unknown } & Record<string, unknown>} payload
- * @param {{ provider?: string, keepEmptyMessages?: boolean, profileMode?: "basic" | "off", includeImpact?: boolean, mergeAdjacentText?: boolean, mergeSeparator?: string, trimMergedText?: boolean, collapseMergedWhitespace?: boolean, maxTextLength?: number, maxBlockCount?: number }} [options]
+ * @param {{ provider?: string, keepEmptyMessages?: boolean, profileMode?: "basic" | "off", includeImpact?: boolean, mergeAdjacentText?: boolean, mergeSeparator?: string, trimMergedText?: boolean, collapseMergedWhitespace?: boolean, stripControlChars?: boolean, maxTextLength?: number, maxBlockCount?: number }} [options]
  * @returns {SanitizedPayload}
  */
 export function runPreflightGuards(payload, options = {}) {
@@ -421,6 +433,7 @@ export function runPreflightGuards(payload, options = {}) {
     mergeSeparator: options.mergeSeparator,
     trimMergedText: options.trimMergedText === true,
     collapseMergedWhitespace: options.collapseMergedWhitespace === true,
+    stripControlChars: options.stripControlChars === true,
     maxTextLength: options.maxTextLength,
     maxBlockCount: options.maxBlockCount,
   });
@@ -447,6 +460,9 @@ export function runPreflightGuards(payload, options = {}) {
       }
       if (options.collapseMergedWhitespace === true) {
         text = text.replace(/\s+/g, " ").trim();
+      }
+      if (options.stripControlChars === true) {
+        text = stripControlCharacters(text);
       }
 
       return limitTextBlockLength({ ...block, text }, maxTextLength);

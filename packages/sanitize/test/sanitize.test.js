@@ -604,6 +604,37 @@ test("summarizePayloadImpact includes top-level content counters", () => {
   });
 });
 
+test("sanitizeMessages can strip control characters when enabled", () => {
+  const messages = sanitizeMessages(
+    [
+      {
+        role: "user",
+        content: [{ type: "text", text: "hello\u0000\u0007world" }],
+      },
+    ],
+    { stripControlChars: true },
+  );
+
+  assert.deepEqual(messages, [
+    {
+      role: "user",
+      content: [{ type: "text", text: "helloworld" }],
+    },
+  ]);
+});
+
+test("runPreflightGuards strips control characters in top-level content", () => {
+  const result = runPreflightGuards(
+    {
+      content: [{ type: "text", text: "a\u0000b\u0007c" }],
+      messages: [{ role: "user", content: ["ok"] }],
+    },
+    { stripControlChars: true },
+  );
+
+  assert.deepEqual(result.content, [{ type: "text", text: "abc" }]);
+});
+
 test("runPreflightGuards can include sanitize impact in payload", () => {
   const result = runPreflightGuards(
     {
