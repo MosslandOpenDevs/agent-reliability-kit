@@ -635,6 +635,37 @@ test("runPreflightGuards strips control characters in top-level content", () => 
   assert.deepEqual(result.content, [{ type: "text", text: "abc" }]);
 });
 
+test("sanitizeMessages can strip ANSI escape codes when enabled", () => {
+  const messages = sanitizeMessages(
+    [
+      {
+        role: "assistant",
+        content: [{ type: "text", text: "\u001b[31merror\u001b[0m: failed" }],
+      },
+    ],
+    { stripAnsiEscapes: true },
+  );
+
+  assert.deepEqual(messages, [
+    {
+      role: "assistant",
+      content: [{ type: "text", text: "error: failed" }],
+    },
+  ]);
+});
+
+test("runPreflightGuards strips ANSI escape codes in top-level content", () => {
+  const result = runPreflightGuards(
+    {
+      content: [{ type: "text", text: "\u001b[32msuccess\u001b[0m" }],
+      messages: [{ role: "user", content: ["ok"] }],
+    },
+    { stripAnsiEscapes: true },
+  );
+
+  assert.deepEqual(result.content, [{ type: "text", text: "success" }]);
+});
+
 test("runPreflightGuards can include sanitize impact in payload", () => {
   const result = runPreflightGuards(
     {
