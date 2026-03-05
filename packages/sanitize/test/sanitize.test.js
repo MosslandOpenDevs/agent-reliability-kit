@@ -728,6 +728,37 @@ test("runPreflightGuards strips markdown links in top-level content", () => {
   assert.deepEqual(result.content, [{ type: "text", text: "Open guide" }]);
 });
 
+test("sanitizeMessages can strip markdown images when enabled", () => {
+  const messages = sanitizeMessages(
+    [
+      {
+        role: "assistant",
+        content: [{ type: "text", text: "Look ![alt](https://example.com/x.png) now" }],
+      },
+    ],
+    { stripMarkdownImages: true },
+  );
+
+  assert.deepEqual(messages, [
+    {
+      role: "assistant",
+      content: [{ type: "text", text: "Look  now" }],
+    },
+  ]);
+});
+
+test("runPreflightGuards strips markdown images in top-level content", () => {
+  const result = runPreflightGuards(
+    {
+      content: [{ type: "text", text: "![preview](https://example.com/p.png) Done" }],
+      messages: [{ role: "user", content: ["ok"] }],
+    },
+    { stripMarkdownImages: true },
+  );
+
+  assert.deepEqual(result.content, [{ type: "text", text: " Done" }]);
+});
+
 test("runPreflightGuards can include sanitize impact in payload", () => {
   const result = runPreflightGuards(
     {

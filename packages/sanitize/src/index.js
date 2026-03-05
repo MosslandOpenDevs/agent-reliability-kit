@@ -57,6 +57,14 @@ function stripMarkdownLinks(text) {
   return text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1");
 }
 
+function stripMarkdownImages(text) {
+  if (typeof text !== "string") {
+    return text;
+  }
+
+  return text.replace(/!\[[^\]]*\]\(([^)]+)\)/g, "");
+}
+
 function limitTextBlockLength(block, maxTextLength) {
   if (!isTextBlock(block)) {
     return block;
@@ -229,7 +237,7 @@ export function clearPreflightGuards() {
  * - removes messages whose normalized content is empty
  *
  * @param {unknown} messages
- * @param {{ keepEmptyMessages?: boolean, provider?: string, profileMode?: "basic" | "off", mergeAdjacentText?: boolean, mergeSeparator?: string, trimMergedText?: boolean, collapseMergedWhitespace?: boolean, stripControlChars?: boolean, stripAnsiEscapes?: boolean, stripHtmlTags?: boolean, stripMarkdownLinks?: boolean, maxTextLength?: number, maxBlockCount?: number }} [options]
+ * @param {{ keepEmptyMessages?: boolean, provider?: string, profileMode?: "basic" | "off", mergeAdjacentText?: boolean, mergeSeparator?: string, trimMergedText?: boolean, collapseMergedWhitespace?: boolean, stripControlChars?: boolean, stripAnsiEscapes?: boolean, stripHtmlTags?: boolean, stripMarkdownLinks?: boolean, stripMarkdownImages?: boolean, maxTextLength?: number, maxBlockCount?: number }} [options]
  * @returns {Array<{ role?: string, content: ContentBlock[] } & Record<string, unknown>>}
  */
 export function sanitizeMessages(messages, options = {}) {
@@ -249,6 +257,7 @@ export function sanitizeMessages(messages, options = {}) {
   const stripAnsiEscapes = options.stripAnsiEscapes === true;
   const stripHtml = options.stripHtmlTags === true;
   const stripMdLinks = options.stripMarkdownLinks === true;
+  const stripMdImages = options.stripMarkdownImages === true;
   const maxTextLength = Number.isFinite(options.maxTextLength) ? Number(options.maxTextLength) : null;
   const maxBlockCount = Number.isInteger(options.maxBlockCount) && options.maxBlockCount >= 0
     ? Number(options.maxBlockCount)
@@ -287,6 +296,9 @@ export function sanitizeMessages(messages, options = {}) {
         }
         if (stripMdLinks) {
           text = stripMarkdownLinks(text);
+        }
+        if (stripMdImages) {
+          text = stripMarkdownImages(text);
         }
 
         return limitTextBlockLength({ ...block, text }, maxTextLength);
@@ -450,7 +462,7 @@ export function summarizePayloadImpact(originalPayload, sanitizedPayload) {
  * Run preflight sanitization + provider/global hooks.
  *
  * @param {{ content?: unknown, messages?: unknown } & Record<string, unknown>} payload
- * @param {{ provider?: string, keepEmptyMessages?: boolean, profileMode?: "basic" | "off", includeImpact?: boolean, mergeAdjacentText?: boolean, mergeSeparator?: string, trimMergedText?: boolean, collapseMergedWhitespace?: boolean, stripControlChars?: boolean, stripAnsiEscapes?: boolean, stripHtmlTags?: boolean, stripMarkdownLinks?: boolean, maxTextLength?: number, maxBlockCount?: number }} [options]
+ * @param {{ provider?: string, keepEmptyMessages?: boolean, profileMode?: "basic" | "off", includeImpact?: boolean, mergeAdjacentText?: boolean, mergeSeparator?: string, trimMergedText?: boolean, collapseMergedWhitespace?: boolean, stripControlChars?: boolean, stripAnsiEscapes?: boolean, stripHtmlTags?: boolean, stripMarkdownLinks?: boolean, stripMarkdownImages?: boolean, maxTextLength?: number, maxBlockCount?: number }} [options]
  * @returns {SanitizedPayload}
  */
 export function runPreflightGuards(payload, options = {}) {
@@ -473,6 +485,7 @@ export function runPreflightGuards(payload, options = {}) {
     stripAnsiEscapes: options.stripAnsiEscapes === true,
     stripHtmlTags: options.stripHtmlTags === true,
     stripMarkdownLinks: options.stripMarkdownLinks === true,
+    stripMarkdownImages: options.stripMarkdownImages === true,
     maxTextLength: options.maxTextLength,
     maxBlockCount: options.maxBlockCount,
   });
@@ -511,6 +524,9 @@ export function runPreflightGuards(payload, options = {}) {
       }
       if (options.stripMarkdownLinks === true) {
         text = stripMarkdownLinks(text);
+      }
+      if (options.stripMarkdownImages === true) {
+        text = stripMarkdownImages(text);
       }
 
       return limitTextBlockLength({ ...block, text }, maxTextLength);
