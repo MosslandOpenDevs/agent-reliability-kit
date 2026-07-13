@@ -10,6 +10,6 @@ catalog:
   "@types/node": ^24.0.0
   ajv: ^8.17.1
   ajv-formats: ^3.0.1
-  tsdown: ^0.22.0
+  tsdown: ^0.22.7
   typescript: ^5.8.0
   "@modelcontextprotocol/sdk": ^1.29.0

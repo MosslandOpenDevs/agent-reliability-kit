@@ -25,8 +25,8 @@ catalogs:
       specifier: ^3.0.1
       version: 3.0.1
     tsdown:
-      specifier: ^0.22.0
-      version: 0.22.6
+      specifier: ^0.22.7
+      version: 0.22.7
     typescript:
       specifier: ^5.8.0
       version: 5.9.3
@@ -52,7 +52,7 @@ importers:
         version: 3.0.1(ajv@8.20.0)
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.6(typescript@5.9.3)
+        version: 0.22.7(typescript@5.9.3)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -1181,14 +1181,14 @@ packages:
     resolution: {integrity: sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==}
     hasBin: true
 
-  tsdown@0.22.6:
-    resolution: {integrity: sha512-RIsCLvtGAV+41juswItHrHaEbgcXr9sL6DI55ZrzP1nxeak5qC9/q/LaWZR0PG0drxro13qxJwvFK2GaiFrT5w==}
+  tsdown@0.22.7:
+    resolution: {integrity: sha512-4egbOzc9dxVv/QS+gDV75FIxDIjQQeOnXBlUuikyjmn0ozuc6FW11djJjEEo3vqkuJRygpnKHurnj+Iwftk4VA==}
     engines: {node: ^22.18.0 || >=24.11.0}
     hasBin: true
     peerDependencies:
       '@arethetypeswrong/core': ^0.18.1
-      '@tsdown/css': 0.22.6
-      '@tsdown/exe': 0.22.6
+      '@tsdown/css': 0.22.7
+      '@tsdown/exe': 0.22.7
       '@vitejs/devtools': '*'
       publint: ^0.3.8
       tsx: '*'
@@ -2301,7 +2301,7 @@ snapshots:
 
   tree-kill@1.2.2: {}
 
-  tsdown@0.22.6(typescript@5.9.3):
+  tsdown@0.22.7(typescript@5.9.3):
     dependencies:
       ansis: 4.3.1
       cac: 7.0.0
