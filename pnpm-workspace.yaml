@@ -11,5 +11,5 @@ catalog:
   ajv: ^8.17.1
   ajv-formats: ^3.0.1
   tsdown: ^0.22.7
-  typescript: ^5.8.0
+  typescript: ^6.0.3
   "@modelcontextprotocol/sdk": ^1.29.0
