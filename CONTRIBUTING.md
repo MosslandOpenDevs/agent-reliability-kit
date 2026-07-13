@@ -75,8 +75,16 @@ changes bump the minor and reuse the file; breaking changes publish a new
 
 ## Releasing
 
-Releases are automated with **Changesets** and published to npm via **OIDC
-trusted publishing** (no `NPM_TOKEN`). Before the first publish, a trusted
-publisher must be configured on npmjs.com for each `@ark/*` package, pointing at
-`.github/workflows/release.yml`. Merging the bot's “Version Packages” PR then
-publishes the bumped packages with provenance attestations.
+Releases use **Changesets** and publish to npm via **OIDC trusted publishing**
+(no `NPM_TOKEN`). Merging the “Version Packages” PR publishes the bumped packages
+with provenance attestations.
+
+The Release workflow is currently **manually dispatched** (Actions → Release →
+Run workflow). Before switching its trigger back to `push` (auto-release), two
+prerequisites must be in place:
+
+1. a trusted publisher configured on npmjs.com for each `@ark/*` package,
+   pointing at `.github/workflows/release.yml`; and
+2. **Settings → Actions → General → Workflow permissions →** “Allow GitHub
+   Actions to create and approve pull requests” enabled (Changesets opens the
+   “Version Packages” PR).
