@@ -81,9 +81,9 @@ All modules are TypeScript, ESM-only, and compose independently.
 
 ## Quickstart
 
-```bash
-pnpm add @ark/classify @ark/policy @ark/report
-```
+> **Not yet published to npm.** Until the first release, use the `@ark/*`
+> packages from a checkout of this repo (they are pnpm workspaces). After the
+> first release: `pnpm add @ark/classify @ark/policy @ark/report`.
 
 ```ts
 import { classifyEvent } from "@ark/classify";
@@ -109,9 +109,10 @@ console.log(formatHumanSummary(report));
 See [`examples/mcp-server`](examples/mcp-server) to expose the same pipeline as
 [Model Context Protocol](docs/MCP.md) tools.
 
-## Input Model (v1)
+## Input Model
 
-ARK consumes runtime events with standardized fields:
+ARK consumes runtime events with standardized fields (see the
+[runtime-event schema](schemas/runtime-event.v2.json), v2):
 
 - session and turn metadata
 - provider/model context
@@ -119,7 +120,7 @@ ARK consumes runtime events with standardized fields:
 - error payload and stack hints
 - recent-window context for burst/noise detection
 
-## Output Model (v1)
+## Output Model
 
 ARK produces:
 
@@ -136,24 +137,25 @@ ARK produces:
 
 ## Roadmap
 
-### Phase 1 — Foundation
+### Phase 1 — Foundation ✅
 
-- event schema definition
-- sanitizer primitives
-- baseline incident taxonomy
-- JSON report generator
+- [x] event schema definition (runtime-event v2)
+- [x] sanitizer primitives
+- [x] baseline incident taxonomy
+- [x] JSON report generator
 
-### Phase 2 — Runtime Policies
+### Phase 2 — Runtime Policies (in progress)
 
-- retry/fallback policy DSL
-- burst and stale-noise gates
-- risk-tier scoring rules
+- [x] retry/fallback/fail-fast decision engine
+- [x] risk-tier scoring rules
+- [x] burst gate — _stale-noise (time-based) gate still pending_
 
-### Phase 3 — Integrations
+### Phase 3 — Integrations (planned)
 
-- GitHub Actions incident report formatter
-- dashboard-ready summary exports
-- trend comparison between release windows
+- [x] MCP server example
+- [ ] GitHub Actions incident report formatter
+- [ ] dashboard-ready summary exports
+- [ ] trend comparison between release windows
 
 ### Under exploration — Runtime Failure Conformance
 
