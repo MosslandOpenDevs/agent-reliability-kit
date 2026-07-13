@@ -1,7 +1,7 @@
 {
-  "name": "@ark/sanitize",
-  "version": "0.2.0",
-  "description": "Request payload normalization and preflight cleanup for AI agent providers.",
+  "name": "@ark/report",
+  "version": "0.1.0",
+  "description": "Human-readable summaries and machine-readable incident artifacts for ARK.",
   "type": "module",
   "license": "Apache-2.0",
   "exports": {
@@ -24,10 +24,13 @@
     "build": "tsdown",
     "test": "node --test \"test/**/*.test.ts\""
   },
+  "dependencies": {
+    "@ark/core": "workspace:*"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/MosslandOpenDevs/agent-reliability-kit.git",
-    "directory": "packages/sanitize"
+    "directory": "packages/report"
   },
   "publishConfig": {
     "access": "public",

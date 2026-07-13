@@ -1,7 +1,7 @@
 {
-  "name": "@ark/sanitize",
-  "version": "0.2.0",
-  "description": "Request payload normalization and preflight cleanup for AI agent providers.",
+  "name": "@ark/classify",
+  "version": "0.1.0",
+  "description": "Incident taxonomy, risk tiering, and confidence scoring for AI agent runtime failures.",
   "type": "module",
   "license": "Apache-2.0",
   "exports": {
@@ -24,10 +24,13 @@
     "build": "tsdown",
     "test": "node --test \"test/**/*.test.ts\""
   },
+  "dependencies": {
+    "@ark/core": "workspace:*"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/MosslandOpenDevs/agent-reliability-kit.git",
-    "directory": "packages/sanitize"
+    "directory": "packages/classify"
   },
   "publishConfig": {
     "access": "public",

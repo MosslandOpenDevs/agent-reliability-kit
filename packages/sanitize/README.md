@@ -79,11 +79,25 @@ const sanitized = runPreflightGuards(
 // ]
 ```
 
+## Limitations
+
+`@ark/sanitize` is a **normalization** layer, not a security boundary:
+
+- `stripHtmlTags` is a regex tag remover for readability/normalization. It is
+  **not** an HTML/XSS sanitizer — do not rely on it as a defense against markup
+  injection. Use a real HTML sanitizer for untrusted rendering.
+- `maxBlockCount` truncates from the front of the block list, which can split a
+  logically paired `tool_call` / `tool_result`. Cap with that in mind.
+- Provider profiles (`provider: "openai" | "anthropic"`) are lightweight,
+  best-effort block-shape adjustments, not a complete provider translation
+  layer — content-type mapping can depend on endpoint and role.
+- Transform functions are pure (they never mutate the input), and `maxTextLength`
+  truncates on UTF-16 boundaries without producing lone surrogates.
+
 ## Test
 
 ```bash
-cd packages/sanitize
-npm test
+pnpm --filter @ark/sanitize test
 ```
 
 Test suite includes provider profile behavior, profileMode bypass, option-matrix determinism, mixed multimodal normalization, and large-message deterministic sanitization.

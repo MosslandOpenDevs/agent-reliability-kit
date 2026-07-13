@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ark.dev/schemas/runtime-event.v2.json",
+  "title": "ARK Runtime Event v2",
+  "description": "Runtime event consumed by the Agent Reliability Kit. Field names align with the OpenTelemetry GenAI semantic conventions where one exists.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["timestamp", "app", "phase"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "description": "Semantic version of this event contract, e.g. \"2.0.0\"."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "app": {
+      "type": "string",
+      "minLength": 1
+    },
+    "phase": {
+      "type": "string",
+      "enum": ["pre_request", "post_response", "error"]
+    },
+    "provider": {
+      "type": "string",
+      "description": "Maps to gen_ai.provider.name (e.g. \"openai\", \"anthropic\")."
+    },
+    "model": {
+      "type": "string",
+      "description": "Maps to gen_ai.request.model."
+    },
+    "responseModel": {
+      "type": "string",
+      "description": "Maps to gen_ai.response.model."
+    },
+    "operation": {
+      "type": "string",
+      "description": "Maps to gen_ai.operation.name.",
+      "enum": [
+        "chat",
+        "text_completion",
+        "generate_content",
+        "embeddings",
+        "create_agent",
+        "invoke_agent",
+        "execute_tool"
+      ]
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "turn": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "inputTokens": { "type": "integer", "minimum": 0 },
+        "outputTokens": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "request": {
+      "description": "Opaque request envelope."
+    },
+    "response": {
+      "description": "Opaque response envelope."
+    },
+    "error": { "$ref": "#/$defs/runtimeError" },
+    "recentWindow": {
+      "type": "array",
+      "description": "Recent same-app events, newest last, for burst / stale-noise detection.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["timestamp", "phase"],
+        "properties": {
+          "timestamp": { "type": "string" },
+          "phase": { "type": "string", "enum": ["pre_request", "post_response", "error"] },
+          "error": { "$ref": "#/$defs/runtimeError" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "runtimeError": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Normalized error. `type` reuses the standard OpenTelemetry error.type attribute.",
+      "properties": {
+        "type": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "integer" },
+        "code": { "type": "string" },
+        "retryable": { "type": "boolean" }
+      }
+    }
+  }
+}
