@@ -1,8 +1,11 @@
 name: Release
 
 on:
-  push:
-    branches: [main]
+  # Manual trigger for now. Re-enable `push: branches: [main]` once (1) a trusted
+  # publisher is configured on npmjs.com for each @ark/* package and (2) GitHub
+  # Actions is allowed to create pull requests
+  # (Settings → Actions → General → Workflow permissions).
+  workflow_dispatch:
 
 # OIDC trusted publishing to npm (no long-lived NPM_TOKEN). Requires a trusted
 # publisher to be configured on npmjs.com for each @ark/* package before the
