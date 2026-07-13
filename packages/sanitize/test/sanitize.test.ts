@@ -1,17 +1,17 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 
 import {
-  removeEmptyTextBlocks,
-  normalizeContentBlocks,
-  mergeAdjacentTextBlocks,
-  runPreflightGuards,
-  registerPreflightGuard,
   clearPreflightGuards,
+  mergeAdjacentTextBlocks,
+  normalizeContentBlocks,
+  registerPreflightGuard,
+  removeEmptyTextBlocks,
+  runPreflightGuards,
   sanitizeMessages,
-  summarizeSanitizeImpact,
   summarizePayloadImpact,
-} from "../src/index.js";
+  summarizeSanitizeImpact,
+} from "../src/index.ts";
 
 test("removeEmptyTextBlocks strips empty and whitespace-only text blocks", () => {
   const blocks = [
@@ -87,10 +87,7 @@ test("sanitizeMessages normalizes message content and removes empty messages", (
   const messages = sanitizeMessages([
     {
       role: "user",
-      content: [
-        { type: "text", text: "  " },
-        "Need a safer fallback plan",
-      ],
+      content: [{ type: "text", text: "  " }, "Need a safer fallback plan"],
     },
     {
       role: "assistant",
@@ -163,9 +160,7 @@ test("sanitizeMessages applies provider profile normalization", () => {
     { provider: "openai" },
   );
 
-  assert.deepEqual(openaiMessages, [
-    { role: "user", content: [{ type: "text", text: "hello" }] },
-  ]);
+  assert.deepEqual(openaiMessages, [{ role: "user", content: [{ type: "text", text: "hello" }] }]);
 
   const anthropicMessages = sanitizeMessages(
     [{ role: "user", content: [{ type: "image_url", image_url: "https://example.com/a.png" }] }],
@@ -186,9 +181,7 @@ test("sanitizeMessages can disable provider profile normalization", () => {
     { provider: "openai", profileMode: "off" },
   );
 
-  assert.deepEqual(messages, [
-    { role: "user", content: [{ type: "input_text", text: "hello" }] },
-  ]);
+  assert.deepEqual(messages, [{ role: "user", content: [{ type: "input_text", text: "hello" }] }]);
 });
 
 test("runPreflightGuards applies global and provider-specific hooks", () => {
@@ -206,10 +199,7 @@ test("runPreflightGuards applies global and provider-specific hooks", () => {
 
   const result = runPreflightGuards(
     {
-      content: [
-        { type: "text", text: "   " },
-        "hello",
-      ],
+      content: [{ type: "text", text: "   " }, "hello"],
       messages: [
         { role: "assistant", content: [{ type: "text", text: "   " }] },
         { role: "user", content: ["deploy with canary"] },
@@ -237,17 +227,13 @@ test("runPreflightGuards applies profile normalization to top-level content by d
   const result = runPreflightGuards(
     {
       content: [{ type: "input_text", text: "hello" }],
-      messages: [
-        { role: "user", content: [{ type: "input_text", text: "hello" }] },
-      ],
+      messages: [{ role: "user", content: [{ type: "input_text", text: "hello" }] }],
     },
     { provider: "openai" },
   );
 
   assert.deepEqual(result.content, [{ type: "text", text: "hello" }]);
-  assert.deepEqual(result.messages, [
-    { role: "user", content: [{ type: "text", text: "hello" }] },
-  ]);
+  assert.deepEqual(result.messages, [{ role: "user", content: [{ type: "text", text: "hello" }] }]);
 });
 
 test("runPreflightGuards keeps original provider block types when profileMode is off", () => {
@@ -256,9 +242,7 @@ test("runPreflightGuards keeps original provider block types when profileMode is
   const result = runPreflightGuards(
     {
       content: [{ type: "input_text", text: "hello" }],
-      messages: [
-        { role: "user", content: [{ type: "input_text", text: "hello" }] },
-      ],
+      messages: [{ role: "user", content: [{ type: "input_text", text: "hello" }] }],
     },
     { provider: "openai", profileMode: "off" },
   );
@@ -304,9 +288,7 @@ test("runPreflightGuards supports custom merge separator", () => {
   const result = runPreflightGuards(
     {
       content: ["alpha", "beta"],
-      messages: [
-        { role: "user", content: ["left", "right"] },
-      ],
+      messages: [{ role: "user", content: ["left", "right"] }],
     },
     { mergeAdjacentText: true, mergeSeparator: " | " },
   );
@@ -323,9 +305,7 @@ test("runPreflightGuards can trim merged text blocks", () => {
   const result = runPreflightGuards(
     {
       content: ["  alpha", "beta  "],
-      messages: [
-        { role: "user", content: ["  left", "right  "] },
-      ],
+      messages: [{ role: "user", content: ["  left", "right  "] }],
     },
     { mergeAdjacentText: true, trimMergedText: true },
   );
@@ -342,9 +322,7 @@ test("runPreflightGuards can collapse merged whitespace into single spaces", () 
   const result = runPreflightGuards(
     {
       content: ["alpha   ", "   beta"],
-      messages: [
-        { role: "user", content: ["left   ", "   right"] },
-      ],
+      messages: [{ role: "user", content: ["left   ", "   right"] }],
     },
     { mergeAdjacentText: true, collapseMergedWhitespace: true },
   );
@@ -384,17 +362,13 @@ test("runPreflightGuards applies maxTextLength to top-level content and messages
   const result = runPreflightGuards(
     {
       content: ["abcdefghij"],
-      messages: [
-        { role: "user", content: ["1234567"] },
-      ],
+      messages: [{ role: "user", content: ["1234567"] }],
     },
     { maxTextLength: 4 },
   );
 
   assert.deepEqual(result.content, [{ type: "text", text: "abcd" }]);
-  assert.deepEqual(result.messages, [
-    { role: "user", content: [{ type: "text", text: "1234" }] },
-  ]);
+  assert.deepEqual(result.messages, [{ role: "user", content: [{ type: "text", text: "1234" }] }]);
 });
 
 test("sanitizeMessages drops text blocks truncated to empty strings", () => {
@@ -436,9 +410,7 @@ test("sanitizeMessages can cap block count per message", () => {
     { maxBlockCount: 1 },
   );
 
-  assert.deepEqual(messages, [
-    { role: "user", content: [{ type: "text", text: "one" }] },
-  ]);
+  assert.deepEqual(messages, [{ role: "user", content: [{ type: "text", text: "one" }] }]);
 });
 
 test("runPreflightGuards can cap top-level and message block counts", () => {
@@ -455,16 +427,23 @@ test("runPreflightGuards can cap top-level and message block counts", () => {
     { type: "text", text: "beta" },
   ]);
   assert.deepEqual(result.messages, [
-    { role: "user", content: [{ type: "text", text: "one" }, { type: "text", text: "two" }] },
+    {
+      role: "user",
+      content: [
+        { type: "text", text: "one" },
+        { type: "text", text: "two" },
+      ],
+    },
   ]);
 });
 
 test("sanitizeMessages handles large message arrays deterministically", () => {
   const messages = Array.from({ length: 1000 }, (_, idx) => ({
     role: "user",
-    content: idx % 2 === 0
-      ? [{ type: "text", text: "   " }]
-      : [{ type: "input_text", text: `message-${idx}` }],
+    content:
+      idx % 2 === 0
+        ? [{ type: "text", text: "   " }]
+        : [{ type: "input_text", text: `message-${idx}` }],
   }));
 
   const sanitized = sanitizeMessages(messages, { provider: "openai" });
@@ -490,9 +469,7 @@ test("sanitizeMessages option matrix stays deterministic", () => {
   const keepEmpty = sanitizeMessages(input, { provider: "openai", keepEmptyMessages: true });
   const profileOff = sanitizeMessages(input, { provider: "openai", profileMode: "off" });
 
-  assert.deepEqual(basic, [
-    { role: "user", content: [{ type: "text", text: "hello" }] },
-  ]);
+  assert.deepEqual(basic, [{ role: "user", content: [{ type: "text", text: "hello" }] }]);
 
   assert.deepEqual(keepEmpty, [
     { role: "assistant", content: [] },
@@ -583,7 +560,7 @@ test("summarizePayloadImpact includes top-level content counters", () => {
     removedTextCharRatio: 0,
     inputRoles: { assistant: 1, user: 1 },
     outputRoles: { user: 1 },
-    removedRoles: ['assistant'],
+    removedRoles: ["assistant"],
     removedRoleCount: 1,
     inputContentBlocks: 2,
     outputContentBlocks: 1,
@@ -786,7 +763,7 @@ test("runPreflightGuards can include sanitize impact in payload", () => {
     removedTextCharRatio: 0,
     inputRoles: { assistant: 1, user: 1 },
     outputRoles: { user: 1 },
-    removedRoles: ['assistant'],
+    removedRoles: ["assistant"],
     removedRoleCount: 1,
     inputContentBlocks: 2,
     outputContentBlocks: 1,
@@ -805,4 +782,95 @@ test("runPreflightGuards can include sanitize impact in payload", () => {
     removedTotalTextChars: 1,
     removedTotalTextCharRatio: 0.125,
   });
+});
+
+test("runPreflightGuards runs a global hook exactly once when no provider is set", () => {
+  clearPreflightGuards();
+  let calls = 0;
+  registerPreflightGuard("*", ({ payload }) => {
+    calls += 1;
+    return payload;
+  });
+
+  runPreflightGuards({ content: ["hello"] });
+  assert.equal(calls, 1);
+
+  clearPreflightGuards();
+});
+
+test("runPreflightGuards runs global then provider hooks once each", () => {
+  clearPreflightGuards();
+  const order: string[] = [];
+  registerPreflightGuard("*", ({ payload }) => {
+    order.push("global");
+    return payload;
+  });
+  registerPreflightGuard("openai", ({ payload }) => {
+    order.push("openai");
+    return payload;
+  });
+
+  runPreflightGuards({ content: ["hello"] }, { provider: "openai" });
+  assert.deepEqual(order, ["global", "openai"]);
+
+  clearPreflightGuards();
+});
+
+test("mergeAdjacentTextBlocks does not mutate the input blocks", () => {
+  const input = [
+    { type: "text", text: "a" },
+    { type: "text", text: "b" },
+  ];
+  const before = structuredClone(input);
+
+  const merged = mergeAdjacentTextBlocks(input);
+
+  assert.deepEqual(input, before, "input array must be untouched");
+  assert.deepEqual(merged, [{ type: "text", text: "a\nb" }]);
+});
+
+test("sanitizeMessages merge does not mutate the caller's message content", () => {
+  const messages = [
+    {
+      role: "user",
+      content: [
+        { type: "text", text: "x" },
+        { type: "text", text: "y" },
+      ],
+    },
+  ];
+  const before = structuredClone(messages);
+
+  sanitizeMessages(messages, { mergeAdjacentText: true });
+
+  assert.deepEqual(messages, before);
+});
+
+test("stripping markdown links and images together removes images fully", () => {
+  const messages = sanitizeMessages(
+    [
+      {
+        role: "user",
+        content: [{ type: "text", text: "see ![alt](http://x/y.png) and [d](http://x/d)" }],
+      },
+    ],
+    { stripMarkdownLinks: true, stripMarkdownImages: true },
+  );
+
+  assert.deepEqual(messages, [{ role: "user", content: [{ type: "text", text: "see  and d" }] }]);
+});
+
+test("maxTextLength never splits a surrogate pair into a lone surrogate", () => {
+  // The emoji is 2 code units and cannot fit in 1 → dropped, no lone surrogate.
+  const dropped = sanitizeMessages(
+    [{ role: "user", content: [{ type: "text", text: "😀tail" }] }],
+    { maxTextLength: 1, keepEmptyMessages: true },
+  );
+  assert.deepEqual(dropped, [{ role: "user", content: [] }]);
+
+  // At width 2 the whole pair fits and survives intact (not a lone surrogate).
+  const kept = sanitizeMessages([{ role: "user", content: [{ type: "text", text: "😀tail" }] }], {
+    maxTextLength: 2,
+  });
+  assert.deepEqual(kept, [{ role: "user", content: [{ type: "text", text: "😀" }] }]);
 });

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "2.0.0",
+  "timestamp": "2026-07-13T12:00:01.250Z",
+  "app": "checkout-agent",
+  "phase": "post_response",
+  "provider": "anthropic",
+  "operation": "chat",
+  "model": "claude-sonnet-5",
+  "responseModel": "claude-sonnet-5-20260101",
+  "usage": { "inputTokens": 1200, "outputTokens": 340 },
+  "session": { "id": "sess_abc123", "turn": 1 }
+}

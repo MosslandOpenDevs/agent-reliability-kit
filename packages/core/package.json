@@ -1,7 +1,7 @@
 {
-  "name": "@ark/sanitize",
-  "version": "0.2.0",
-  "description": "Request payload normalization and preflight cleanup for AI agent providers.",
+  "name": "@ark/core",
+  "version": "0.1.0",
+  "description": "Shared runtime-event contracts, incident types, and OpenTelemetry GenAI mapping for ARK.",
   "type": "module",
   "license": "Apache-2.0",
   "exports": {
@@ -27,7 +27,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/MosslandOpenDevs/agent-reliability-kit.git",
-    "directory": "packages/sanitize"
+    "directory": "packages/core"
   },
   "publishConfig": {
     "access": "public",

@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+# OIDC trusted publishing to npm (no long-lived NPM_TOKEN). Requires a trusted
+# publisher to be configured on npmjs.com for each @ark/* package before the
+# first release. See CONTRIBUTING.md → Releasing.
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+concurrency: release-${{ github.ref }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      # npm Trusted Publishing (OIDC) needs npm >= 11.5.1; setup-node ships older.
+      - run: npm install -g npm@latest
+      - run: pnpm build
+      # Apache-2.0 requires shipping LICENSE (and NOTICE) with each package.
+      - name: Bundle LICENSE + NOTICE into each package
+        run: pnpm -r --filter "./packages/*" exec cp ../../LICENSE ../../NOTICE .
+      - name: Create release PR or publish
+        uses: changesets/action@v1
+        with:
+          version: pnpm version-packages
+          publish: pnpm release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

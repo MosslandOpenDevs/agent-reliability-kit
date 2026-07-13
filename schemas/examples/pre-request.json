@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "2.0.0",
+  "timestamp": "2026-07-13T12:00:00.000Z",
+  "app": "checkout-agent",
+  "phase": "pre_request",
+  "provider": "anthropic",
+  "operation": "chat",
+  "model": "claude-sonnet-5",
+  "session": { "id": "sess_abc123", "turn": 1 }
+}

@@ -1,0 +1,82 @@
+# Contributing to ARK
+
+Thanks for helping make agent reliability a product capability. This is a
+TypeScript monorepo managed with **pnpm workspaces**.
+
+## Prerequisites
+
+- **Node.js ≥ 22** (24 LTS recommended — see `.nvmrc`). Tests run `.ts` files
+  directly via Node's native type stripping, so Node ≥ 22.18 is required to run
+  the test suite locally.
+- **pnpm** (pinned via the `packageManager` field; `corepack enable` will fetch
+  the right version automatically).
+
+## Getting started
+
+```bash
+pnpm install
+pnpm build        # tsdown → dist per package (topological order)
+pnpm check        # typecheck + lint + schema:validate + test
+```
+
+Useful scripts (root):
+
+| Script                | What it does                                      |
+| --------------------- | ------------------------------------------------- |
+| `pnpm build`          | Build every package with tsdown                   |
+| `pnpm typecheck`      | `tsc --noEmit` across the workspace               |
+| `pnpm lint`           | Biome lint + format check                         |
+| `pnpm lint:fix`       | Apply safe Biome fixes + format                   |
+| `pnpm schema:validate`| Validate `schemas/examples/*` against the schema  |
+| `pnpm test`           | Build, then run every package's `node --test`     |
+| `pnpm changeset`      | Record a user-facing change for release           |
+
+## Toolchain
+
+- **Language:** TypeScript, ESM-only. Source must be *erasable* (no `enum`,
+  namespaces, or parameter properties; use `import type` for type-only imports)
+  — enforced by `erasableSyntaxOnly` so tests can run without a compile step.
+- **Build:** [tsdown](https://tsdown.dev) (Rolldown). Public APIs need explicit
+  return types (`isolatedDeclarations`).
+- **Lint/format:** [Biome](https://biomejs.dev). Run `pnpm lint:fix` before
+  pushing.
+- **Tests:** the built-in `node:test` runner, zero extra dependencies.
+
+## Module contract checklist
+
+Every `@ark/*` package must satisfy the following before merge:
+
+- [ ] Public types are defined in or re-exported from `@ark/core` (one shared
+      vocabulary across `sanitize → classify → policy → report`).
+- [ ] `package.json` follows the template: `type: module`, `exports` with
+      `types` + `import` conditions, `files: ["dist", "README.md"]`,
+      `sideEffects: false`, `build`/`test` scripts, `publishConfig.access:
+      public`.
+- [ ] Behavior is **deterministic** — no wall-clock reads or randomness in core
+      logic (inject timestamps/ids instead) so outputs are snapshot-testable.
+- [ ] Unit tests cover the happy path, edge cases, and a safe default/fallback.
+- [ ] `README.md` documents the public API and the JSON output contract.
+- [ ] `pnpm check` passes.
+- [ ] A changeset is added for any user-facing change.
+
+## Runtime-event schema
+
+The runtime-event contract lives in `schemas/` and is validated in CI. See
+[`schemas/README.md`](./schemas/README.md) for the **versioning rule**: additive
+changes bump the minor and reuse the file; breaking changes publish a new
+`runtime-event.v{N+1}.json` and freeze the old one. Keep `SCHEMA_VERSION` in
+`@ark/core` in sync, and add example fixtures under `schemas/examples/`.
+
+## Commits & PRs
+
+- Conventional-commit style is appreciated (`feat(policy): …`, `fix(sanitize): …`).
+- Fill in the PR template and check the boxes.
+- CI must be green (quality job + test matrix on Node 22/24/26).
+
+## Releasing
+
+Releases are automated with **Changesets** and published to npm via **OIDC
+trusted publishing** (no `NPM_TOKEN`). Before the first publish, a trusted
+publisher must be configured on npmjs.com for each `@ark/*` package, pointing at
+`.github/workflows/release.yml`. Merging the bot's “Version Packages” PR then
+publishes the bumped packages with provenance attestations.

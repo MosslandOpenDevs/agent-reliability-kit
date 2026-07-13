@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "2.0.0",
+  "timestamp": "2026-07-13T12:00:02.000Z",
+  "app": "checkout-agent",
+  "phase": "error",
+  "provider": "openai",
+  "operation": "chat",
+  "model": "gpt-5",
+  "error": {
+    "type": "RateLimitError",
+    "message": "Rate limit reached for requests",
+    "status": 429,
+    "code": "rate_limit_exceeded",
+    "retryable": true
+  },
+  "session": { "id": "sess_def456", "turn": 4 },
+  "recentWindow": [
+    { "timestamp": "2026-07-13T11:59:59.000Z", "phase": "error", "error": { "status": 429 } },
+    { "timestamp": "2026-07-13T12:00:00.500Z", "phase": "error", "error": { "status": 429 } },
+    { "timestamp": "2026-07-13T12:00:01.500Z", "phase": "error", "error": { "status": 429 } }
+  ]
+}

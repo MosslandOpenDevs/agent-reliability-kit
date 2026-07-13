@@ -1,0 +1,20 @@
+{
+  "name": "@ark/example-mcp-server",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Example MCP server exposing ARK sanitize/classify/policy/report as tools.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "tsdown",
+    "start": "node dist/index.mjs"
+  },
+  "dependencies": {
+    "@ark/classify": "workspace:*",
+    "@ark/core": "workspace:*",
+    "@ark/policy": "workspace:*",
+    "@ark/report": "workspace:*",
+    "@ark/sanitize": "workspace:*",
+    "@modelcontextprotocol/sdk": "catalog:"
+  }
+}
