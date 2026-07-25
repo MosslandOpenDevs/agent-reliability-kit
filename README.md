@@ -8,16 +8,9 @@
 **Agent Reliability Kit (ARK)** is a reliability layer for AI agent products.
 It helps teams prevent silent failures, reduce noisy alerts, and turn runtime incidents into actionable operational signals.
 
-## Vision
+## Why ARK
 
-AI agents are moving from demos to production systems, but reliability practices are still fragmented.
-ARK exists to make agent reliability **predictable, observable, and automatable**.
-
-Our long-term vision is to become the standard reliability substrate for agent applications, similar to what structured logging and APM did for web services.
-
-## Problem Statement
-
-Modern agent systems fail in ways that are hard to diagnose quickly:
+AI agents are moving from demos to production, but reliability practices are still fragmented. Modern agent systems fail in ways that are hard to diagnose quickly:
 
 - provider request payload mismatches
 - fragile branch/skip/retry state transitions
@@ -25,49 +18,7 @@ Modern agent systems fail in ways that are hard to diagnose quickly:
 - poor incident taxonomy in logs and alerts
 - high MTTR due to missing context at failure time
 
-Most teams currently patch these problems ad hoc per repository.
-ARK centralizes those patterns into reusable primitives.
-
-## Goals
-
-### Primary goals
-
-1. **Reliability by default**  
-   Provide safe defaults for sanitization, classification, and policy-driven recovery.
-
-2. **Operational clarity**  
-   Convert raw runtime events into clear incident reasons, risk tiers, and remediation hints.
-
-3. **Automation-first outputs**  
-   Emit machine-readable artifacts for CI/CD, monitoring, and postmortem workflows.
-
-4. **Low-friction adoption**  
-   Integrate incrementally with existing agent products without forcing architecture rewrites.
-
-### Non-goals (for now)
-
-- replacing existing APM/logging stacks
-- abstracting every provider-specific edge case in v1
-- acting as a full workflow orchestrator
-
-## Product Philosophy
-
-ARK follows five strict principles:
-
-1. **Determinism over magic**  
-   Reliability decisions must be inspectable and reproducible.
-
-2. **Fail loud, but with guidance**  
-   Every hard failure should include precise reason and next action.
-
-3. **Noise suppression without blindness**  
-   Low-signal noise is suppressed and true burst behavior is surfaced early.
-
-4. **Composable by design**  
-   Teams can adopt only what they need: sanitize, classify, policy, report.
-
-5. **Human + machine symmetry**  
-   Every incident has both concise human summary and structured JSON output.
+Most teams patch these ad hoc per repository. ARK centralizes the patterns into reusable primitives — aiming to be for agent reliability what structured logging and APM became for web services.
 
 ## Core Modules
 
@@ -78,17 +29,6 @@ ARK follows five strict principles:
 - [`@ark/report`](packages/report) — human-readable summaries + JSON artifacts
 
 All modules are TypeScript, ESM-only, and compose independently.
-
-## Where ARK fits
-
-ARK operates at **runtime**: it decides how a live agent recovers from a
-failure and turns each incident into a structured signal. That is a different
-layer from the [Agentic Assurance Profile (AAP)](https://github.com/MosslandOpenDevs/agentic-assurance-profile)
-— a repository-level profile for governing whether an AI-agent-built project's
-claims, invariants, and evidence still hold as the code changes. The two
-compose rather than compete: you **run** ARK as a reliability substrate and
-**adopt** AAP as an assurance profile — under which ARK's deterministic policies
-and JSON incident artifacts can serve as runtime evidence.
 
 ## Quickstart
 
@@ -138,7 +78,32 @@ ARK produces:
 - immediate runtime actions (sanitize/retry/fallback/fail-fast)
 - incident classification (`incidentReason`, `riskTier`, `confidence`)
 - remediation guidance
-- JSON artifacts for automation pipelines
+- a concise human summary plus structured JSON artifacts for automation pipelines
+
+## Where ARK fits
+
+ARK operates at **runtime**: it decides how a live agent recovers from a
+failure and turns each incident into a structured signal. That is a different
+layer from the [Agentic Assurance Profile (AAP)](https://github.com/MosslandOpenDevs/agentic-assurance-profile)
+— a repository-level profile for governing whether an AI-agent-built project's
+claims, invariants, and evidence still hold as the code changes. The two
+compose rather than compete: you **run** ARK as a reliability substrate and
+**adopt** AAP as an assurance profile — under which ARK's deterministic policies
+and JSON incident artifacts can serve as runtime evidence.
+
+## Design principles
+
+- **Deterministic, not magic** — reliability decisions are inspectable and reproducible, built on safe defaults for sanitize, classify, and policy.
+- **Fail loud, with guidance** — every hard failure carries a precise reason, risk tier, and next action.
+- **Suppress noise without going blind** — low-signal events are damped while true burst behavior is surfaced early.
+- **Composable and incremental** — adopt only what you need; integrate without an architecture rewrite.
+- **Automation-first outputs** — machine-readable artifacts for CI/CD, monitoring, and postmortem workflows.
+
+### Non-goals (for now)
+
+- replacing existing APM/logging stacks
+- abstracting every provider-specific edge case in v1
+- acting as a full workflow orchestrator
 
 ## Initial Target Users
 
@@ -189,13 +154,8 @@ ARK should create measurable outcomes:
 
 ## Repository layout
 
-```
-packages/
-  core/       shared types, taxonomy, OTel GenAI mapping
-  sanitize/   payload normalization + preflight
-  classify/   incident classification
-  policy/     recovery decision engine
-  report/     human + machine incident artifacts
+```text
+packages/     core, sanitize, classify, policy, report (see Core Modules)
 schemas/      runtime-event JSON Schema (+ examples, validated in CI)
 examples/     runnable integrations (MCP server)
 docs/         architecture and integration notes
@@ -213,15 +173,5 @@ pnpm install
 pnpm check      # typecheck + lint + schema:validate + test
 ```
 
-Requires Node.js ≥ 22 (24 LTS recommended). See [CONTRIBUTING.md](./CONTRIBUTING.md).
-
-## Status
-
-Phase 1 (foundation) and the core reliability pipeline are implemented:
-`@ark/core`, `@ark/sanitize`, `@ark/classify`, `@ark/policy`, `@ark/report`, the
-runtime-event schema v2, and an MCP integration example. See the
-[roadmap](#roadmap) for what's next.
-
----
-
-If you are building agent products and want reliability to be a product capability (not an afterthought), ARK is for you.
+Requires Node.js ≥ 22 (24 LTS recommended). See [CONTRIBUTING.md](./CONTRIBUTING.md)
+and the [architecture notes](docs/ARCHITECTURE.md).
