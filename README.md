@@ -61,7 +61,7 @@ ARK follows five strict principles:
    Every hard failure should include precise reason and next action.
 
 3. **Noise suppression without blindness**  
-   Stale and low-signal events are filtered, but true burst behavior is surfaced early.
+   Low-signal noise is suppressed and true burst behavior is surfaced early.
 
 4. **Composable by design**  
    Teams can adopt only what they need: sanitize, classify, policy, report.
@@ -128,7 +128,7 @@ ARK consumes runtime events with standardized fields (see the
 - session and turn metadata
 - provider/model context
 - request/response envelope
-- error payload and stack hints
+- error payload
 - recent-window context for burst/noise detection
 
 ## Output Model
