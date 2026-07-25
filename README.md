@@ -79,6 +79,17 @@ ARK follows five strict principles:
 
 All modules are TypeScript, ESM-only, and compose independently.
 
+## Where ARK fits
+
+ARK operates at **runtime**: it decides how a live agent recovers from a
+failure and turns each incident into a structured signal. That is a different
+layer from the [Agentic Assurance Profile (AAP)](https://github.com/MosslandOpenDevs/agentic-assurance-profile)
+— a repository-level profile for governing whether an AI-agent-built project's
+claims, invariants, and evidence still hold as the code changes. The two
+compose rather than compete: you **run** ARK as a reliability substrate and
+**adopt** AAP as an assurance profile — under which ARK's deterministic policies
+and JSON incident artifacts can serve as runtime evidence.
+
 ## Quickstart
 
 > **Not yet published to npm.** Until the first release, use the `@ark/*`
