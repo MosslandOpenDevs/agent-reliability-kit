@@ -73,7 +73,7 @@
     "error": { "$ref": "#/$defs/runtimeError" },
     "recentWindow": {
       "type": "array",
-      "description": "Recent same-app events, newest last, for burst / stale-noise detection.",
+      "description": "Recent same-app events, newest last, for burst detection (timestamps reserved for a future stale-noise gate).",
       "items": {
         "type": "object",
         "additionalProperties": false,

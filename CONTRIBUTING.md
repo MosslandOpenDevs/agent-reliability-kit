@@ -1,6 +1,7 @@
 # Contributing to ARK
 
-Thanks for helping make agent reliability a product capability. This is a
+Thanks for helping explore reliability patterns for AI agent runtimes. ARK is a
+reference implementation (see [Status & scope](./README.md#status--scope)), and a
 TypeScript monorepo managed with **pnpm workspaces**.
 
 ## Prerequisites
@@ -29,7 +30,7 @@ Useful scripts (root):
 | `pnpm lint:fix`       | Apply safe Biome fixes + format                   |
 | `pnpm schema:validate`| Validate `schemas/examples/*` against the schema  |
 | `pnpm test`           | Build, then run every package's `node --test`     |
-| `pnpm changeset`      | Record a user-facing change for release           |
+| `pnpm changeset`      | Record a user-facing change (Changesets)          |
 
 ## Toolchain
 
@@ -74,6 +75,11 @@ changes bump the minor and reuse the file; breaking changes publish a new
 - CI must be green (quality job + test matrix on Node 22/24/26).
 
 ## Releasing
+
+> ARK is a reference implementation and is **not currently published** to npm
+> (see [Status & scope](./README.md#status--scope)). The release tooling below is
+> configured but dormant; the notes are kept for anyone who forks ARK to publish
+> their own line.
 
 Releases use **Changesets** and publish to npm via **OIDC trusted publishing**
 (no `NPM_TOKEN`). Merging the “Version Packages” PR publishes the bumped packages

@@ -60,7 +60,11 @@ export interface RuntimeError {
   readonly retryable?: boolean;
 }
 
-/** Compact prior event used for burst / stale-noise detection. */
+/**
+ * Compact prior event used for burst detection. The `timestamp` is carried for
+ * correlation and is reserved for a future stale-noise gate (not yet used by
+ * {@link classifyEvent}).
+ */
 export interface RecentEvent {
   readonly timestamp: string;
   readonly phase: IncidentPhase;
