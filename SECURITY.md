@@ -2,8 +2,9 @@
 
 ## Supported versions
 
-ARK is pre-1.0. Security fixes are applied to the latest `main` and the most
-recent published release of each `@ark/*` package.
+ARK is a reference implementation and is not published to npm, so there are no
+released package versions to patch separately. Security fixes are applied to the
+latest `main`.
 
 ## Reporting a vulnerability
 

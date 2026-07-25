@@ -2,7 +2,7 @@
   "name": "agent-reliability-kit",
   "version": "0.0.0",
   "private": true,
-  "description": "A reliability layer for AI agent products: sanitize, classify, policy, report.",
+  "description": "A reliability layer for AI agent runtimes: sanitize, classify, policy, report.",
   "type": "module",
   "license": "Apache-2.0",
   "repository": {
@@ -19,6 +19,7 @@
   },
   "scripts": {
     "build": "pnpm -r --filter \"./packages/*\" run build",
+    "demo": "pnpm run build && pnpm --filter @ark/example-pipeline start",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",

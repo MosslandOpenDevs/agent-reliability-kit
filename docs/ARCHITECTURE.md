@@ -58,6 +58,5 @@ Runtime Event ─▶ sanitize ─▶ classify ─▶ policy ─▶ report
 ## Toolchain
 
 pnpm workspaces · TypeScript (ESM-only, erasable syntax) · tsdown (Rolldown)
-builds · Biome lint/format · `node:test` · Changesets + npm OIDC trusted
-publishing. CI runs typecheck, lint, the schema gate, and the test matrix on
-Node 22/24/26.
+builds · Biome lint/format · `node:test` · Changesets for versioning. CI runs
+typecheck, lint, the schema gate, and the test matrix on Node 22/24/26.

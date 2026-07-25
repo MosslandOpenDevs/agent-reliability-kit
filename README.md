@@ -5,8 +5,14 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-ESM-blue)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
-**Agent Reliability Kit (ARK)** is a reliability layer for AI agent products.
+**Agent Reliability Kit (ARK)** is a reliability layer for AI agent runtimes.
 It helps teams prevent silent failures, reduce noisy alerts, and turn runtime incidents into actionable operational signals.
+
+> **Status — reference implementation / idea repo.** The full pipeline is
+> implemented and test-backed, meant to be read, run, and adapted. It is *not*
+> a maintained product: it is not published to npm, and product-scale work
+> (framework adapters, dashboards, a release cadence) is deliberately
+> [out of scope](#status--scope).
 
 ## Why ARK
 
@@ -18,7 +24,7 @@ AI agents are moving from demos to production, but reliability practices are sti
 - poor incident taxonomy in logs and alerts
 - high MTTR due to missing context at failure time
 
-Most teams patch these ad hoc per repository. ARK centralizes the patterns into reusable primitives — aiming to be for agent reliability what structured logging and APM became for web services.
+Most teams patch these ad hoc per repository. ARK centralizes the patterns into reusable primitives — a sketch of what a reliability layer for agent runtimes could look like, the way structured logging and APM did for web services.
 
 ## Core Modules
 
@@ -32,9 +38,9 @@ All modules are TypeScript, ESM-only, and compose independently.
 
 ## Quickstart
 
-> **Not yet published to npm.** Until the first release, use the `@ark/*`
-> packages from a checkout of this repo (they are pnpm workspaces). After the
-> first release: `pnpm add @ark/classify @ark/policy @ark/report`.
+> **Not published to npm** — this is a reference implementation. Use the
+> `@ark/*` packages from a checkout of this repo (they are pnpm workspaces).
+> For a version you can run as-is, see the [runnable example](examples/pipeline).
 
 ```ts
 import { classifyEvent } from "@ark/classify";
@@ -57,7 +63,9 @@ console.log(formatHumanSummary(report));
 // [low] rate_limit — retry with backoff (attempt 1/3, 500ms) · confidence 90%
 ```
 
-See [`examples/mcp-server`](examples/mcp-server) to expose the same pipeline as
+[`examples/pipeline`](examples/pipeline) runs this exact flow end-to-end from a
+checkout (`sanitize → classify → policy → report`). See
+[`examples/mcp-server`](examples/mcp-server) to expose the same pipeline as
 [Model Context Protocol](docs/MCP.md) tools.
 
 ## Input Model
@@ -99,65 +107,51 @@ and JSON incident artifacts can serve as runtime evidence.
 - **Composable and incremental** — adopt only what you need; integrate without an architecture rewrite.
 - **Automation-first outputs** — machine-readable artifacts for CI/CD, monitoring, and postmortem workflows.
 
-### Non-goals (for now)
+### Non-goals
 
 - replacing existing APM/logging stacks
-- abstracting every provider-specific edge case in v1
+- abstracting every provider-specific edge case
 - acting as a full workflow orchestrator
 
-## Initial Target Users
+## Who might find it useful
 
 - AI product teams shipping agent features
 - OSS maintainers handling agent-runtime bug reports
 - platform/ops teams responsible for production incident hygiene
 
-## Roadmap
+## Status & scope
 
-### Phase 1 — Foundation ✅
+A **reference implementation**: the reliability pipeline is complete and
+test-backed, meant to be read, run, and adapted rather than shipped as a product.
 
-- [x] event schema definition (runtime-event v2)
-- [x] sanitizer primitives
-- [x] baseline incident taxonomy
-- [x] JSON report generator
+**Implemented (concept-complete):**
 
-### Phase 2 — Runtime Policies (in progress)
+- runtime-event schema v2, aligned with the OpenTelemetry GenAI conventions
+- `@ark/sanitize` — payload normalization + preflight guards
+- `@ark/classify` — deterministic incident taxonomy, risk tiers, confidence, and the burst gate
+- `@ark/policy` — retry/fallback/fail-fast engine with decision traces
+- `@ark/report` — human summary + JSON incident artifact
+- a runnable end-to-end example and an MCP integration example
 
-- [x] retry/fallback/fail-fast decision engine
-- [x] risk-tier scoring rules
-- [x] burst gate — _stale-noise (time-based) gate still pending_
+**The ideas it means to demonstrate:**
 
-### Phase 3 — Integrations (planned)
+- suppressing false-positive alert volume and repeated provider-4xx noise
+- faster incident triage (MTTR) and more reproducible bug reports across teams
 
-- [x] MCP server example
-- [ ] GitHub Actions incident report formatter
-- [ ] dashboard-ready summary exports
-- [ ] trend comparison between release windows
+**Out of scope — deliberately, to keep this a focused idea repo:**
 
-### Under exploration — Runtime Failure Conformance
-
-A complementary direction: treat ARK as a local, deterministic **conformance
-kit** that verifies, from portable traces and injected failures, that an agent
-runtime honors retry, idempotency, deadline, tool-result, and privacy contracts.
-This would add a cross-span **rules** layer (evidence-based invariants) and an
-`ark probe` fault injector (429 + `Retry-After`, timeouts, stream aborts, ACK
-loss, duplicate tool calls) on top of the current primitives. Tracked as a
-research track, not yet committed scope.
-
-## Success Metrics
-
-ARK should create measurable outcomes:
-
-- lower provider 4xx repeat rates
-- lower false-positive alert volume
-- faster incident triage (MTTR reduction)
-- higher reproducibility of bug reports across teams
+- publishing to npm or maintaining a release cadence
+- adapters for specific agent frameworks, dashboards, or trend analytics
+- a time-based stale-noise gate (the burst gate already demonstrates the idea)
+- a runtime-failure **conformance** kit (`ark probe`, evidence-based rules) — the
+  assurance direction lives in the sibling [Agentic Assurance Profile](https://github.com/MosslandOpenDevs/agentic-assurance-profile)
 
 ## Repository layout
 
 ```text
 packages/     core, sanitize, classify, policy, report (see Core Modules)
 schemas/      runtime-event JSON Schema (+ examples, validated in CI)
-examples/     runnable integrations (MCP server)
+examples/     runnable examples (end-to-end pipeline, MCP server)
 docs/         architecture and integration notes
 ```
 
@@ -165,7 +159,7 @@ docs/         architecture and integration notes
 
 TypeScript, ESM-only, [pnpm](https://pnpm.io) workspaces. Built with
 [tsdown](https://tsdown.dev), linted/formatted with [Biome](https://biomejs.dev),
-tested with the built-in `node:test` runner, released with
+tested with the built-in `node:test` runner, versioned with
 [Changesets](https://github.com/changesets/changesets).
 
 ```bash
