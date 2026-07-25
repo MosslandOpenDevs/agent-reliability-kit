@@ -1,13 +1,12 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
-      "@ark/core": ["packages/core/src/index.ts"],
-      "@ark/sanitize": ["packages/sanitize/src/index.ts"],
-      "@ark/classify": ["packages/classify/src/index.ts"],
-      "@ark/policy": ["packages/policy/src/index.ts"],
-      "@ark/report": ["packages/report/src/index.ts"]
+      "@ark/core": ["./packages/core/src/index.ts"],
+      "@ark/sanitize": ["./packages/sanitize/src/index.ts"],
+      "@ark/classify": ["./packages/classify/src/index.ts"],
+      "@ark/policy": ["./packages/policy/src/index.ts"],
+      "@ark/report": ["./packages/report/src/index.ts"]
     }
   },
   "include": [
