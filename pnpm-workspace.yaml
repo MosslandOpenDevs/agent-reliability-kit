@@ -12,4 +12,4 @@ catalog:
   ajv-formats: ^3.0.1
   tsdown: ^0.22.12
   typescript: ^6.0.3
-  "@modelcontextprotocol/sdk": ^1.29.0
+  "@modelcontextprotocol/sdk": ^1.30.0
