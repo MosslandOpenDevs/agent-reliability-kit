@@ -437,6 +437,439 @@ test("runPreflightGuards can cap top-level and message block counts", () => {
   ]);
 });
 
+test("sanitizeMessages caps the raw message prefix before normalization without backfilling", () => {
+  const input = [
+    { role: "empty", content: ["   "] },
+    { role: "first", content: ["abc"] },
+    { role: "second", content: [{ type: "tool_result", data: { ok: true } }] },
+  ];
+
+  assert.deepEqual(sanitizeMessages(input, { maxMessageCount: 1 }), []);
+  assert.deepEqual(sanitizeMessages(input, { maxMessageCount: 2 }), [
+    { role: "first", content: [{ type: "text", text: "abc" }] },
+  ]);
+
+  assert.deepEqual(
+    sanitizeMessages(input, {
+      maxMessageCount: 2,
+      maxTotalTextChars: 0,
+    }),
+    [],
+    "the second sanitized message must not backfill a prefixed message emptied by the budget",
+  );
+});
+
+test("aggregate input gates stop before reading content or messages beyond their limits", () => {
+  const content: unknown[] = ["one", "two", "unreachable"];
+  Object.defineProperty(content, 2, {
+    get: () => {
+      throw new Error("content beyond maxTotalBlockCount was read");
+    },
+  });
+
+  assert.deepEqual(sanitizeMessages([{ role: "user", content }], { maxTotalBlockCount: 2 }), [
+    {
+      role: "user",
+      content: [
+        { type: "text", text: "one" },
+        { type: "text", text: "two" },
+      ],
+    },
+  ]);
+
+  const messages: unknown[] = [{ role: "user", content: ["first"] }, "unreachable"];
+  Object.defineProperty(messages, 1, {
+    get: () => {
+      throw new Error("message beyond maxMessageCount was read");
+    },
+  });
+
+  assert.deepEqual(sanitizeMessages(messages, { maxMessageCount: 1 }), [
+    { role: "user", content: [{ type: "text", text: "first" }] },
+  ]);
+});
+
+test("includeImpact summarizes only the bounded input prefix", () => {
+  const content: unknown[] = ["one", "two", "unreachable"];
+  Object.defineProperty(content, 2, {
+    get: () => {
+      throw new Error("impact accounting read beyond maxTotalBlockCount");
+    },
+  });
+
+  const result = runPreflightGuards({ content }, { maxTotalBlockCount: 2, includeImpact: true });
+  const impact = result.sanitizeImpact as {
+    inputContentBlocks: number;
+    inputMetricsTruncated?: boolean;
+  };
+
+  assert.equal(impact.inputContentBlocks, 2);
+  assert.equal(impact.inputMetricsTruncated, true);
+});
+
+test("sanitizeMessages enforces a total block budget across messages", () => {
+  const result = sanitizeMessages(
+    [
+      {
+        role: "first",
+        content: ["alpha", { type: "tool_result", data: { ok: true } }],
+      },
+      { role: "second", content: ["beta"] },
+    ],
+    { maxTotalBlockCount: 2 },
+  );
+
+  assert.deepEqual(result, [
+    {
+      role: "first",
+      content: [
+        { type: "text", text: "alpha" },
+        { type: "tool_result", data: { ok: true } },
+      ],
+    },
+  ]);
+});
+
+test("sanitizeMessages enforces a total UTF-16 text budget in traversal order", () => {
+  const result = sanitizeMessages(
+    [
+      { role: "first", content: ["abc"] },
+      { role: "second", content: ["def"] },
+    ],
+    { maxTotalTextChars: 4 },
+  );
+
+  assert.deepEqual(result, [
+    { role: "first", content: [{ type: "text", text: "abc" }] },
+    { role: "second", content: [{ type: "text", text: "d" }] },
+  ]);
+});
+
+test("aggregate caps compose with merge, per-block text, and per-list block caps", () => {
+  const result = sanitizeMessages(
+    [
+      {
+        role: "user",
+        content: ["ab", "cd", { type: "tool_result", data: { ok: true } }],
+      },
+    ],
+    {
+      mergeAdjacentText: true,
+      maxTextLength: 3,
+      maxBlockCount: 1,
+      maxTotalTextChars: 2,
+    },
+  );
+
+  assert.deepEqual(result, [
+    {
+      role: "user",
+      content: [{ type: "text", text: "ab" }],
+    },
+  ]);
+});
+
+test("merge construction shares the total text budget across payload content and messages", () => {
+  const result = runPreflightGuards(
+    {
+      content: ["a", "b"],
+      messages: [{ role: "user", content: ["c", "d"] }],
+    },
+    {
+      mergeAdjacentText: true,
+      mergeSeparator: "x".repeat(100_000),
+      maxTotalTextChars: 8,
+    },
+  );
+
+  assert.deepEqual(result.content, [{ type: "text", text: "axxxxxxx" }]);
+  assert.deepEqual(result.messages, []);
+});
+
+test("aggregate zero limits are valid and text exhaustion still permits non-text blocks", () => {
+  const input = [
+    {
+      role: "user",
+      content: [
+        "text",
+        { type: "tool_result", data: { ok: true } },
+        "tail",
+        { type: "image", url: "https://example.com/x.png" },
+      ],
+    },
+  ];
+
+  assert.deepEqual(sanitizeMessages(input, { maxMessageCount: 0 }), []);
+  assert.deepEqual(sanitizeMessages(input, { maxTotalBlockCount: 0 }), []);
+  assert.deepEqual(sanitizeMessages(input, { maxTotalTextChars: 0 }), [
+    {
+      role: "user",
+      content: [
+        { type: "tool_result", data: { ok: true } },
+        { type: "image", url: "https://example.com/x.png" },
+      ],
+    },
+  ]);
+});
+
+test("aggregate text truncation never emits a lone surrogate", () => {
+  const result = sanitizeMessages(
+    [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "😀tail" },
+          { type: "tool_result", data: { ok: true } },
+        ],
+      },
+    ],
+    { maxTotalTextChars: 1 },
+  );
+
+  assert.deepEqual(result, [
+    {
+      role: "user",
+      content: [{ type: "tool_result", data: { ok: true } }],
+    },
+  ]);
+});
+
+test("aggregate text budgets include provider-specific blocks with a string text field", () => {
+  const result = sanitizeMessages(
+    [
+      {
+        role: "user",
+        content: [
+          { type: "input_text", text: "abcdef" },
+          { type: "tool_result", data: { ok: true } },
+        ],
+      },
+    ],
+    { profileMode: "off", maxTotalTextChars: 3 },
+  );
+
+  assert.deepEqual(result, [
+    {
+      role: "user",
+      content: [
+        { type: "input_text", text: "abc" },
+        { type: "tool_result", data: { ok: true } },
+      ],
+    },
+  ]);
+});
+
+test("aggregate caps preserve emptied messages only when requested", () => {
+  const input = [
+    { role: "first", content: ["abc"] },
+    { role: "second", content: [{ type: "tool_result", data: { ok: true } }] },
+  ];
+
+  assert.deepEqual(sanitizeMessages(input, { maxTotalBlockCount: 0, keepEmptyMessages: true }), [
+    { role: "first", content: [] },
+    { role: "second", content: [] },
+  ]);
+  assert.deepEqual(sanitizeMessages(input, { maxTotalBlockCount: 0 }), []);
+});
+
+test("runPreflightGuards shares aggregate budgets from top-level content into messages", () => {
+  const result = runPreflightGuards(
+    {
+      content: ["abcd", { type: "image", url: "https://example.com/top.png" }],
+      messages: [
+        {
+          role: "user",
+          content: ["1234", { type: "tool_result", data: { ok: true } }],
+        },
+        { role: "assistant", content: ["later"] },
+      ],
+    },
+    {
+      maxMessageCount: 2,
+      maxTotalBlockCount: 4,
+      maxTotalTextChars: 6,
+    },
+  );
+
+  assert.deepEqual(result.content, [
+    { type: "text", text: "abcd" },
+    { type: "image", url: "https://example.com/top.png" },
+  ]);
+  assert.deepEqual(result.messages, [
+    {
+      role: "user",
+      content: [
+        { type: "text", text: "12" },
+        { type: "tool_result", data: { ok: true } },
+      ],
+    },
+  ]);
+});
+
+test("invalid aggregate limits are unlimited and omitted options preserve output", () => {
+  const input = [
+    { role: "first", content: ["alpha", { type: "tool_result", data: { ok: true } }] },
+    { role: "second", content: ["beta"] },
+  ];
+  const baseline = sanitizeMessages(input);
+
+  assert.deepEqual(
+    sanitizeMessages(input, {
+      maxMessageCount: -1,
+      maxTotalBlockCount: 1.5,
+      maxTotalTextChars: Number.NaN,
+    }),
+    baseline,
+  );
+  assert.deepEqual(sanitizeMessages(input, {}), baseline);
+});
+
+test("runPreflightGuards reapplies aggregate limits after every accepted hook", (t) => {
+  clearPreflightGuards();
+  t.after(clearPreflightGuards);
+  let blocksSeenBySecondHook = -1;
+
+  registerPreflightGuard("*", ({ payload }) => ({
+    ...payload,
+    content: [
+      { type: "text", text: "abcdef" },
+      { type: "tool_result", data: { source: "hook" } },
+    ],
+    messages: [
+      {
+        role: "first",
+        content: [
+          { type: "text", text: "ghij" },
+          { type: "tool_result", data: { ok: true } },
+        ],
+      },
+      { role: "second", content: [{ type: "image", url: "https://example.com/x.png" }] },
+    ],
+  }));
+  registerPreflightGuard("*", ({ payload }) => {
+    blocksSeenBySecondHook =
+      payload.content.length +
+      (payload.messages ?? []).reduce((sum, message) => sum + message.content.length, 0);
+  });
+
+  const result = runPreflightGuards(
+    { content: ["initial"], messages: [{ role: "initial", content: ["message"] }] },
+    {
+      maxMessageCount: 1,
+      maxTotalBlockCount: 3,
+      maxTotalTextChars: 5,
+    },
+  );
+
+  assert.equal(blocksSeenBySecondHook, 3);
+  assert.deepEqual(result.content, [
+    { type: "text", text: "abcde" },
+    { type: "tool_result", data: { source: "hook" } },
+  ]);
+  assert.deepEqual(result.messages, [
+    {
+      role: "first",
+      content: [{ type: "tool_result", data: { ok: true } }],
+    },
+  ]);
+});
+
+test("runPreflightGuards caps in-place hook mutations before the next hook", (t) => {
+  clearPreflightGuards();
+  t.after(clearPreflightGuards);
+  let blocksSeenByProviderHook = -1;
+
+  registerPreflightGuard("*", ({ payload }) => {
+    payload.content.push({ type: "text", text: "inflated" });
+    payload.messages?.push({
+      role: "hook",
+      content: [{ type: "tool_result", data: { source: "hook" } }],
+    });
+  });
+  registerPreflightGuard("openai", ({ payload }) => {
+    blocksSeenByProviderHook =
+      payload.content.length +
+      (payload.messages ?? []).reduce((sum, message) => sum + message.content.length, 0);
+  });
+
+  const result = runPreflightGuards(
+    { content: ["a"], messages: [{ role: "user", content: ["b"] }] },
+    { provider: "openai", maxTotalBlockCount: 1 },
+  );
+
+  assert.equal(blocksSeenByProviderHook, 1);
+  assert.deepEqual(result.content, [{ type: "text", text: "a" }]);
+  assert.deepEqual(result.messages, []);
+});
+
+test("runPreflightGuards normalizes non-array hook messages when a resource cap is active", (t) => {
+  clearPreflightGuards();
+  t.after(clearPreflightGuards);
+
+  registerPreflightGuard(
+    "*",
+    ({ payload }) =>
+      ({
+        ...payload,
+        messages: "not-an-array",
+      }) as unknown as typeof payload,
+  );
+
+  const result = runPreflightGuards(
+    { content: ["safe"], messages: [{ role: "user", content: ["message"] }] },
+    { maxMessageCount: 1 },
+  );
+
+  assert.deepEqual(result.content, [{ type: "text", text: "safe" }]);
+  assert.deepEqual(result.messages, []);
+});
+
+test("runPreflightGuards computes impact from the final capped hook output", (t) => {
+  clearPreflightGuards();
+  t.after(clearPreflightGuards);
+
+  registerPreflightGuard("*", ({ payload }) => ({
+    ...payload,
+    content: [...payload.content, { type: "tool_result", data: { source: "hook" } }],
+  }));
+
+  const result = runPreflightGuards(
+    {
+      content: ["abcd"],
+      messages: [{ role: "user", content: ["efgh"] }],
+    },
+    {
+      maxTotalBlockCount: 2,
+      maxTotalTextChars: 5,
+      includeImpact: true,
+    },
+  );
+
+  assert.deepEqual(result.content, [
+    { type: "text", text: "abcd" },
+    { type: "tool_result", data: { source: "hook" } },
+  ]);
+  assert.deepEqual(result.messages, []);
+  assert.deepEqual(
+    {
+      outputMessages: (result.sanitizeImpact as { outputMessages: number }).outputMessages,
+      outputBlocks: (result.sanitizeImpact as { outputBlocks: number }).outputBlocks,
+      outputContentBlocks: (result.sanitizeImpact as { outputContentBlocks: number })
+        .outputContentBlocks,
+      outputTotalBlocks: (result.sanitizeImpact as { outputTotalBlocks: number }).outputTotalBlocks,
+      outputTotalTextChars: (result.sanitizeImpact as { outputTotalTextChars: number })
+        .outputTotalTextChars,
+    },
+    {
+      outputMessages: 0,
+      outputBlocks: 0,
+      outputContentBlocks: 2,
+      outputTotalBlocks: 2,
+      outputTotalTextChars: 4,
+    },
+  );
+});
+
 test("sanitizeMessages handles large message arrays deterministically", () => {
   const messages = Array.from({ length: 1000 }, (_, idx) => ({
     role: "user",
@@ -522,10 +955,10 @@ test("summarizeSanitizeImpact returns deterministic counters", () => {
     outputBlocks: 1,
     removedBlocks: 1,
     removedBlockRatio: 0.5,
-    inputTextChars: 3,
+    inputTextChars: 8,
     outputTextChars: 5,
-    removedTextChars: 0,
-    removedTextCharRatio: 0,
+    removedTextChars: 3,
+    removedTextCharRatio: 0.375,
     inputRoles: { assistant: 1, user: 1 },
     outputRoles: { user: 1 },
   });
@@ -554,10 +987,10 @@ test("summarizePayloadImpact includes top-level content counters", () => {
     outputBlocks: 1,
     removedBlocks: 1,
     removedBlockRatio: 0.5,
-    inputTextChars: 3,
+    inputTextChars: 8,
     outputTextChars: 5,
-    removedTextChars: 0,
-    removedTextCharRatio: 0,
+    removedTextChars: 3,
+    removedTextCharRatio: 0.375,
     inputRoles: { assistant: 1, user: 1 },
     outputRoles: { user: 1 },
     removedRoles: ["assistant"],
@@ -574,10 +1007,10 @@ test("summarizePayloadImpact includes top-level content counters", () => {
     outputTotalBlocks: 2,
     removedTotalBlocks: 2,
     removedTotalBlockRatio: 0.5,
-    inputTotalTextChars: 11,
+    inputTotalTextChars: 16,
     outputTotalTextChars: 10,
-    removedTotalTextChars: 1,
-    removedTotalTextCharRatio: 0.091,
+    removedTotalTextChars: 6,
+    removedTotalTextCharRatio: 0.375,
   });
 });
 
@@ -757,10 +1190,10 @@ test("runPreflightGuards can include sanitize impact in payload", () => {
     outputBlocks: 1,
     removedBlocks: 1,
     removedBlockRatio: 0.5,
-    inputTextChars: 3,
+    inputTextChars: 8,
     outputTextChars: 5,
-    removedTextChars: 0,
-    removedTextCharRatio: 0,
+    removedTextChars: 3,
+    removedTextCharRatio: 0.375,
     inputRoles: { assistant: 1, user: 1 },
     outputRoles: { user: 1 },
     removedRoles: ["assistant"],
@@ -777,10 +1210,10 @@ test("runPreflightGuards can include sanitize impact in payload", () => {
     outputTotalBlocks: 2,
     removedTotalBlocks: 2,
     removedTotalBlockRatio: 0.5,
-    inputTotalTextChars: 8,
+    inputTotalTextChars: 13,
     outputTotalTextChars: 7,
-    removedTotalTextChars: 1,
-    removedTotalTextCharRatio: 0.125,
+    removedTotalTextChars: 6,
+    removedTotalTextCharRatio: 0.462,
   });
 });
 

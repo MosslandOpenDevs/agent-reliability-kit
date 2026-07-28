@@ -7,7 +7,8 @@
   "license": "Apache-2.0",
   "scripts": {
     "build": "tsdown",
-    "start": "node dist/index.mjs"
+    "start": "node dist/index.mjs",
+    "test": "node --test \"test/**/*.test.ts\""
   },
   "dependencies": {
     "@ark/classify": "workspace:*",
@@ -15,6 +16,8 @@
     "@ark/policy": "workspace:*",
     "@ark/report": "workspace:*",
     "@ark/sanitize": "workspace:*",
-    "@modelcontextprotocol/sdk": "catalog:"
+    "@modelcontextprotocol/sdk": "catalog:",
+    "ajv": "catalog:",
+    "ajv-formats": "catalog:"
   }
 }
