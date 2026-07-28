@@ -46,7 +46,8 @@ from suppressed (`none`) to a real emerging incident (`moderate`).
 | `unknown`         | no match (safe default)                                        | moderate² |
 
 ¹ `runtime_noise` escalates to `moderate` when a burst is detected.
-² `unknown` with no error payload (a healthy observation) is `none`.
+² `unknown` with no error payload is `none` for non-error phases. An explicit
+`error` phase without details remains `unknown` / `moderate`.
 
 Confidence is `0.9` for an unambiguous HTTP status, `0.6` for a keyword match,
 and `0.2` for the `unknown` fallback. Classification is fully deterministic — no

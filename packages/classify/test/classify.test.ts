@@ -70,6 +70,21 @@ test("healthy non-error observations are not incidents", () => {
   assert.equal(result.riskTier, "none");
 });
 
+test("error-phase observations without an error payload remain actionable", () => {
+  const result = classifyEvent({
+    timestamp: "2026-07-13T00:00:00.000Z",
+    app: "test-agent",
+    phase: "error",
+  });
+
+  assert.deepEqual(result, {
+    incidentReason: "unknown",
+    riskTier: "moderate",
+    confidence: 0.2,
+    signals: ["no_match", "phase:error"],
+  });
+});
+
 test("runtime noise is suppressed unless a burst is detected", () => {
   const single = classifyEvent(eventWith({ status: 503 }));
   assert.equal(single.riskTier, "none");
@@ -89,6 +104,24 @@ test("runtime noise is suppressed unless a burst is detected", () => {
   );
   assert.equal(burst.riskTier, "moderate");
   assert.ok(burst.signals.some((s) => s.startsWith("burst:")));
+});
+
+test("error-phase window entries count toward a burst without error details", () => {
+  const result = classifyEvent(
+    eventWith(
+      { status: 503 },
+      {
+        recentWindow: [
+          { timestamp: "t1", phase: "error" },
+          { timestamp: "t2", phase: "error" },
+          { timestamp: "t3", phase: "error" },
+        ],
+      },
+    ),
+  );
+
+  assert.equal(result.riskTier, "moderate");
+  assert.ok(result.signals.includes("burst:3"));
 });
 
 test("classification is deterministic across repeated calls", () => {
