@@ -52,6 +52,12 @@ export interface SanitizeOptions {
   stripMarkdownImages?: boolean;
   maxTextLength?: number;
   maxBlockCount?: number;
+  /** Maximum messages examined and retained, as an ordered input prefix. */
+  maxMessageCount?: number;
+  /** Maximum content entries examined and blocks retained across the traversal. */
+  maxTotalBlockCount?: number;
+  /** Maximum UTF-16 text code units processed and retained across the traversal. */
+  maxTotalTextChars?: number;
 }
 
 /** Options for {@link runPreflightGuards}. */
@@ -79,6 +85,8 @@ export interface SanitizeImpact {
 
 /** {@link SanitizeImpact} extended with top-level content counters. */
 export interface PayloadImpact extends SanitizeImpact {
+  /** Input counters cover only the bounded prefix when an aggregate gate truncated input. */
+  inputMetricsTruncated?: boolean;
   removedRoles: string[];
   removedRoleCount: number;
   inputContentBlocks: number;
@@ -113,6 +121,10 @@ function toTextBlock(text: string): TextBlock {
 
 function isTextBlock(block: unknown): block is TextBlock {
   return isObject(block) && block.type === "text" && typeof block.text === "string";
+}
+
+function isTextBearingBlock(block: unknown): block is ContentBlock & { text: string } {
+  return isObject(block) && typeof block.text === "string";
 }
 
 function stripControlCharacters(text: string): string {
@@ -343,15 +355,328 @@ function resolveMaxBlockCount(value: number | undefined): number | null {
   return Number.isInteger(value) && (value as number) >= 0 ? Number(value) : null;
 }
 
+function resolveAggregateLimit(value: number | undefined): number | null {
+  return Number.isInteger(value) && (value as number) >= 0 ? Number(value) : null;
+}
+
+function hasAggregateLimits(options: SanitizeOptions): boolean {
+  return (
+    resolveAggregateLimit(options.maxMessageCount) !== null ||
+    resolveAggregateLimit(options.maxTotalBlockCount) !== null ||
+    resolveAggregateLimit(options.maxTotalTextChars) !== null
+  );
+}
+
+interface AggregateBudget {
+  remainingBlocks: number | null;
+  remainingTextChars: number | null;
+  inputTruncated: boolean;
+}
+
+function createAggregateBudget(options: SanitizeOptions): AggregateBudget {
+  return {
+    remainingBlocks: resolveAggregateLimit(options.maxTotalBlockCount),
+    remainingTextChars: resolveAggregateLimit(options.maxTotalTextChars),
+    inputTruncated: false,
+  };
+}
+
+interface MergeTextBudget {
+  remainingTextChars: number | null;
+}
+
+function createMergeTextBudget(options: SanitizeOptions): MergeTextBudget {
+  return {
+    remainingTextChars: resolveAggregateLimit(options.maxTotalTextChars),
+  };
+}
+
+function takeMergeText(text: string, budget: MergeTextBudget): string {
+  if (budget.remainingTextChars === null) {
+    return text;
+  }
+
+  const next =
+    text.length <= budget.remainingTextChars
+      ? text
+      : truncateUtf16Safe(text, budget.remainingTextChars);
+  budget.remainingTextChars -= next.length;
+  return next;
+}
+
+function mergeAdjacentTextBlocksWithinBudget(
+  blocks: ContentBlock[],
+  separator: string,
+  budget: MergeTextBudget,
+): ContentBlock[] {
+  if (budget.remainingTextChars === null) {
+    return mergeAdjacentTextBlocks(blocks, separator);
+  }
+
+  const merged: ContentBlock[] = [];
+  let pendingTextBlock: ContentBlock | undefined;
+  let pendingTextParts: string[] = [];
+  const flushPendingText = (): void => {
+    if (pendingTextBlock !== undefined) {
+      merged.push({ ...pendingTextBlock, text: pendingTextParts.join("") });
+      pendingTextBlock = undefined;
+      pendingTextParts = [];
+    }
+  };
+
+  for (const block of blocks) {
+    if (!isTextBlock(block)) {
+      flushPendingText();
+      merged.push(block);
+      continue;
+    }
+
+    if (pendingTextBlock !== undefined) {
+      const boundedSeparator = takeMergeText(separator, budget);
+      const boundedText = takeMergeText(block.text, budget);
+      if (boundedSeparator.length > 0) {
+        pendingTextParts.push(boundedSeparator);
+      }
+      if (boundedText.length > 0) {
+        pendingTextParts.push(boundedText);
+      }
+      continue;
+    }
+
+    const boundedText = takeMergeText(block.text, budget);
+    if (boundedText.length > 0) {
+      pendingTextBlock = block;
+      pendingTextParts = [boundedText];
+    }
+  }
+  flushPendingText();
+  return merged;
+}
+
+const SKIP_CONTENT_ENTRY = Symbol("skip-content-entry");
+
+function consumeInputBlock(budget: AggregateBudget): boolean {
+  if (budget.remainingBlocks === 0) {
+    budget.inputTruncated = true;
+    return false;
+  }
+  if (budget.remainingBlocks !== null) {
+    budget.remainingBlocks -= 1;
+  }
+  return true;
+}
+
+function capInputText(text: string, budget: AggregateBudget): string {
+  if (budget.remainingTextChars === null) {
+    return text;
+  }
+
+  const capped =
+    text.length <= budget.remainingTextChars
+      ? text
+      : truncateUtf16Safe(text, budget.remainingTextChars);
+  if (capped.length !== text.length) {
+    budget.inputTruncated = true;
+  }
+  budget.remainingTextChars -= capped.length;
+  return capped;
+}
+
+function capInputContentEntry(
+  entry: unknown,
+  budget: AggregateBudget,
+): unknown | typeof SKIP_CONTENT_ENTRY {
+  if (typeof entry === "string") {
+    const text = capInputText(entry, budget);
+    return text.length > 0 ? text : SKIP_CONTENT_ENTRY;
+  }
+
+  if (!isObject(entry)) {
+    return entry;
+  }
+
+  const textKey =
+    typeof entry.text === "string"
+      ? "text"
+      : entry.type === "text" && typeof entry.content === "string"
+        ? "content"
+        : null;
+  if (textKey === null || budget.remainingTextChars === null) {
+    return entry;
+  }
+
+  const originalText = entry[textKey] as string;
+  const text = capInputText(originalText, budget);
+  if (text.length === 0) {
+    return SKIP_CONTENT_ENTRY;
+  }
+  return text === originalText ? entry : { ...entry, [textKey]: text };
+}
+
+function capInputContentToAggregateBudget(content: unknown, budget: AggregateBudget): unknown {
+  if (budget.remainingBlocks === null && budget.remainingTextChars === null) {
+    return content;
+  }
+
+  if (typeof content === "string") {
+    if (!consumeInputBlock(budget)) {
+      return [];
+    }
+    const entry = capInputContentEntry(content, budget);
+    return entry === SKIP_CONTENT_ENTRY ? [] : entry;
+  }
+
+  if (!Array.isArray(content)) {
+    return content;
+  }
+
+  const capped: unknown[] = [];
+  for (let index = 0; index < content.length; index += 1) {
+    if (!consumeInputBlock(budget)) {
+      break;
+    }
+    const entry = content[index];
+    const next = capInputContentEntry(entry, budget);
+    if (next !== SKIP_CONTENT_ENTRY) {
+      capped.push(next);
+    }
+  }
+  return capped;
+}
+
+function capInputMessagesToAggregateBudget(
+  messages: unknown,
+  options: SanitizeOptions,
+  budget: AggregateBudget,
+): unknown {
+  if (!Array.isArray(messages)) {
+    return messages;
+  }
+
+  const maxMessageCount = resolveAggregateLimit(options.maxMessageCount);
+  if (maxMessageCount !== null && messages.length > maxMessageCount) {
+    budget.inputTruncated = true;
+  }
+  const prefix = maxMessageCount === null ? messages : messages.slice(0, maxMessageCount);
+  if (budget.remainingBlocks === null && budget.remainingTextChars === null) {
+    return prefix;
+  }
+
+  return prefix.map((message) =>
+    isObject(message)
+      ? {
+          ...message,
+          content: capInputContentToAggregateBudget(message.content, budget),
+        }
+      : message,
+  );
+}
+
+function capBlocksToAggregateBudget(
+  blocks: readonly ContentBlock[],
+  budget: AggregateBudget,
+): ContentBlock[] {
+  if (budget.remainingBlocks === null && budget.remainingTextChars === null) {
+    return blocks as ContentBlock[];
+  }
+
+  const capped: ContentBlock[] = [];
+
+  for (const block of blocks) {
+    if (budget.remainingBlocks === 0) {
+      break;
+    }
+
+    if (!isTextBearingBlock(block)) {
+      capped.push(block);
+      if (budget.remainingBlocks !== null) {
+        budget.remainingBlocks -= 1;
+      }
+      continue;
+    }
+
+    if (budget.remainingTextChars === null) {
+      capped.push(block);
+      if (budget.remainingBlocks !== null) {
+        budget.remainingBlocks -= 1;
+      }
+      continue;
+    }
+
+    const text =
+      block.text.length <= budget.remainingTextChars
+        ? block.text
+        : truncateUtf16Safe(block.text, budget.remainingTextChars);
+
+    // A text block that cannot emit any text consumes neither a block nor text
+    // budget, so a later non-text block can still be retained.
+    if (text.length === 0) {
+      continue;
+    }
+
+    capped.push(text === block.text ? block : { ...block, text });
+    budget.remainingTextChars -= text.length;
+    if (budget.remainingBlocks !== null) {
+      budget.remainingBlocks -= 1;
+    }
+  }
+
+  return capped;
+}
+
+function capMessagePrefix(
+  messages: SanitizedMessage[],
+  maxMessageCount: number | null,
+): SanitizedMessage[] {
+  return maxMessageCount === null ? messages : messages.slice(0, maxMessageCount);
+}
+
+function capMessagesToAggregateBudget(
+  messages: readonly SanitizedMessage[],
+  budget: AggregateBudget,
+  keepEmptyMessages: boolean,
+): SanitizedMessage[] {
+  const capped = messages.map(
+    (message): SanitizedMessage => ({
+      ...message,
+      content: capBlocksToAggregateBudget(
+        Array.isArray(message.content) ? message.content : [],
+        budget,
+      ),
+    }),
+  );
+
+  return keepEmptyMessages ? capped : capped.filter((message) => message.content.length > 0);
+}
+
+function applyMessageAggregateLimits(
+  messages: SanitizedMessage[],
+  options: SanitizeOptions,
+): SanitizedMessage[] {
+  const maxMessageCount = resolveAggregateLimit(options.maxMessageCount);
+  const budget = createAggregateBudget(options);
+  if (
+    maxMessageCount === null &&
+    budget.remainingBlocks === null &&
+    budget.remainingTextChars === null
+  ) {
+    return messages;
+  }
+
+  const prefixed = capMessagePrefix(messages, maxMessageCount);
+  return capMessagesToAggregateBudget(prefixed, budget, options.keepEmptyMessages === true);
+}
+
 /**
- * Normalize message arrays into a safe, provider-friendly shape.
+ * Normalize message arrays before applying aggregate message/block/text caps.
  * - keeps role when provided
  * - normalizes each message.content through block normalization
  * - removes messages whose normalized content is empty (unless kept)
  */
-export function sanitizeMessages(
+function normalizeMessages(
   messages: unknown,
   options: SanitizeOptions = {},
+  mergeBudget: MergeTextBudget = createMergeTextBudget(options),
 ): SanitizedMessage[] {
   if (!Array.isArray(messages)) {
     return [];
@@ -374,7 +699,7 @@ export function sanitizeMessages(
       );
 
       const mergedContent = mergeAdjacentText
-        ? mergeAdjacentTextBlocks(normalizedContent, mergeSeparator)
+        ? mergeAdjacentTextBlocksWithinBudget(normalizedContent, mergeSeparator, mergeBudget)
         : normalizedContent;
 
       const normalizedMergedContent = mergedContent.map((block): ContentBlock => {
@@ -407,6 +732,20 @@ export function sanitizeMessages(
   );
 }
 
+/**
+ * Normalize message arrays into a safe, provider-friendly shape, then apply
+ * deterministic aggregate limits in message/block order.
+ */
+export function sanitizeMessages(
+  messages: unknown,
+  options: SanitizeOptions = {},
+): SanitizedMessage[] {
+  const inputBudget = createAggregateBudget(options);
+  const cappedInput = capInputMessagesToAggregateBudget(messages, options, inputBudget);
+  const mergeBudget = createMergeTextBudget(options);
+  return applyMessageAggregateLimits(normalizeMessages(cappedInput, options, mergeBudget), options);
+}
+
 function countRoles(messages: unknown): Record<string, number> {
   if (!Array.isArray(messages)) {
     return {};
@@ -430,7 +769,7 @@ function countTextChars(messages: unknown): number {
   return messages.reduce<number>((acc, message) => {
     const blocks = normalizeContentBlocks(isObject(message) ? message.content : undefined);
     const textChars = blocks.reduce<number>((sum, block) => {
-      if (!isTextBlock(block)) {
+      if (!isTextBearingBlock(block)) {
         return sum;
       }
       return sum + block.text.length;
@@ -441,7 +780,7 @@ function countTextChars(messages: unknown): number {
 
 function countBlockTextChars(blocks: ContentBlock[]): number {
   return blocks.reduce<number>((acc, block) => {
-    if (!isTextBlock(block)) {
+    if (!isTextBearingBlock(block)) {
       return acc;
     }
     return acc + block.text.length;
@@ -559,6 +898,49 @@ export function summarizePayloadImpact(
   };
 }
 
+function applyPayloadAggregateLimits(
+  payload: SanitizedPayload,
+  options: SanitizeOptions,
+): SanitizedPayload {
+  const maxMessageCount = resolveAggregateLimit(options.maxMessageCount);
+  const budget = createAggregateBudget(options);
+
+  if (
+    maxMessageCount === null &&
+    budget.remainingBlocks === null &&
+    budget.remainingTextChars === null
+  ) {
+    return payload;
+  }
+
+  const hasMessages = Object.hasOwn(payload, "messages");
+  const prefixedMessages = hasMessages
+    ? capMessagePrefix(
+        Array.isArray(payload.messages)
+          ? payload.messages.filter((message): message is SanitizedMessage => isObject(message))
+          : [],
+        maxMessageCount,
+      )
+    : undefined;
+  const content = capBlocksToAggregateBudget(
+    Array.isArray(payload.content) ? payload.content : [],
+    budget,
+  );
+  const messages =
+    prefixedMessages === undefined
+      ? undefined
+      : capMessagesToAggregateBudget(prefixedMessages, budget, options.keepEmptyMessages === true);
+
+  const capped: SanitizedPayload = {
+    ...payload,
+    content,
+  };
+  if (messages !== undefined) {
+    capped.messages = messages;
+  }
+  return capped;
+}
+
 /**
  * Run preflight sanitization plus provider/global hooks.
  */
@@ -573,19 +955,29 @@ export function runPreflightGuards(
 
   const payloadObject = isObject(payload) ? payload : {};
 
-  const messages = sanitizeMessages(payloadObject.messages, options);
+  // Gate raw content before regex transforms and merging so configured limits
+  // bound sanitizer work as well as the returned normalized output.
+  const inputBudget = createAggregateBudget(options);
+  const cappedTopLevelInput = capInputContentToAggregateBudget(payloadObject.content, inputBudget);
+  const cappedMessagesInput = capInputMessagesToAggregateBudget(
+    payloadObject.messages,
+    options,
+    inputBudget,
+  );
+  const mergeBudget = createMergeTextBudget(options);
 
   const normalizedTopLevelContent = removeEmptyTextBlocks(
-    normalizeContentBlocks(payloadObject.content),
+    normalizeContentBlocks(cappedTopLevelInput),
   ).map((block) =>
     profileMode === "off" ? block : normalizeProviderContentBlock(provider, block),
   );
 
   const mergedTopLevelContent =
     options.mergeAdjacentText === true
-      ? mergeAdjacentTextBlocks(
+      ? mergeAdjacentTextBlocksWithinBudget(
           normalizedTopLevelContent,
           typeof options.mergeSeparator === "string" ? options.mergeSeparator : "\n",
+          mergeBudget,
         )
       : normalizedTopLevelContent;
 
@@ -604,16 +996,31 @@ export function runPreflightGuards(
     maxBlockCount !== null
       ? normalizedTopLevelMergedContent.slice(0, maxBlockCount)
       : normalizedTopLevelMergedContent;
+  const messages = normalizeMessages(cappedMessagesInput, options, mergeBudget);
 
-  let sanitized: SanitizedPayload = {
-    ...payloadObject,
-    content: normalizedTopLevelCappedContent,
-    messages,
+  let sanitized: SanitizedPayload = applyPayloadAggregateLimits(
+    {
+      ...payloadObject,
+      content: normalizedTopLevelCappedContent,
+      messages,
+    },
+    options,
+  );
+
+  const impactSource = hasAggregateLimits(options)
+    ? { content: cappedTopLevelInput, messages: cappedMessagesInput }
+    : payloadObject;
+  const updateImpact = (): void => {
+    if (options.includeImpact !== true) {
+      return;
+    }
+    const impact = summarizePayloadImpact(impactSource, sanitized);
+    if (inputBudget.inputTruncated) {
+      impact.inputMetricsTruncated = true;
+    }
+    sanitized.sanitizeImpact = impact;
   };
-
-  if (options.includeImpact === true) {
-    sanitized.sanitizeImpact = summarizePayloadImpact(payloadObject, sanitized);
-  }
+  updateImpact();
 
   // Global (`*`) hooks always run; provider-specific hooks run after them.
   // When no provider is given, `provider` IS `DEFAULT_PROVIDER`, so guard
@@ -628,7 +1035,18 @@ export function runPreflightGuards(
     if (isObject(next) && Array.isArray(next.content)) {
       sanitized = next as SanitizedPayload;
     }
+
+    // Hooks are expected to return replacements, but cap after every invocation
+    // so an in-place mutation that returns nothing cannot inflate what the next
+    // hook observes.
+    sanitized = applyPayloadAggregateLimits(sanitized, options);
+    updateImpact();
   }
+
+  // Reapply once at the boundary as defense in depth for hooks that mutate the
+  // payload in place but return nothing.
+  sanitized = applyPayloadAggregateLimits(sanitized, options);
+  updateImpact();
 
   return sanitized;
 }

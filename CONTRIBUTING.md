@@ -24,12 +24,12 @@ Useful scripts (root):
 
 | Script                | What it does                                      |
 | --------------------- | ------------------------------------------------- |
-| `pnpm build`          | Build every package with tsdown                   |
+| `pnpm build`          | Build every package and the MCP server example    |
 | `pnpm typecheck`      | `tsc --noEmit` across the workspace               |
 | `pnpm lint`           | Biome lint + format check                         |
 | `pnpm lint:fix`       | Apply safe Biome fixes + format                   |
 | `pnpm schema:validate`| Validate `schemas/examples/*` against the schema  |
-| `pnpm test`           | Build, then run every package's `node --test`     |
+| `pnpm test`           | Build, then run package and MCP integration tests |
 | `pnpm changeset`      | Record a user-facing change (Changesets)          |
 
 ## Toolchain

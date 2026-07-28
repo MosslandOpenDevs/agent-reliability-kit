@@ -135,7 +135,7 @@ function countBurst(event: RuntimeEvent): number {
   if (!Array.isArray(window)) {
     return 0;
   }
-  return window.filter((entry) => entry?.error !== undefined).length;
+  return window.filter((entry) => entry?.phase === "error" || entry?.error !== undefined).length;
 }
 
 /**
@@ -178,9 +178,13 @@ export function classifyEvent(event: RuntimeEvent, options: ClassifyOptions = {}
   }
 
   // A non-error observation that matched nothing is healthy, not an incident.
+  // An explicit error-phase event stays at the `unknown` baseline risk even
+  // when the producer could not supply a normalized error payload.
   if (event.error === undefined && reason === "unknown") {
-    riskTier = "none";
     signals.push(`phase:${event.phase}`);
+    if (event.phase !== "error") {
+      riskTier = "none";
+    }
   }
 
   return {

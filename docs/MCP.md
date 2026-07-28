@@ -17,6 +17,24 @@ runnable server built on `@modelcontextprotocol/sdk` that registers:
 | `ark_policy`   | `{ classification, context?, config? }`  | `PolicyDecision`                        |
 | `ark_triage`   | `{ event, context?, config? }`           | classification + decision + report      |
 
+The server uses each advertised tool schema as a runtime validation boundary.
+Outer argument objects, runtime events, classifications, policy context/config,
+and sanitize options reject unsupported or mistyped fields. Runtime events are
+validated against the canonical
+[`runtime-event.v2.json`](../schemas/runtime-event.v2.json) contract. Invalid
+arguments are returned as visible tool errors (`isError: true`) so the caller can
+correct the request without losing the MCP connection.
+
+`ark_sanitize` also imposes default remote-call ceilings of 256 messages, 2,048
+total normalized content blocks, and 1,000,000 UTF-16 text code units. A caller
+may lower these values with `maxMessageCount`, `maxTotalBlockCount`, and
+`maxTotalTextChars`, but cannot raise them. Known `content` and `messages` are
+gated before sanitizer transforms and capped again after normalization. These
+are not transport byte limits: the stdio transport has already parsed the
+JSON-RPC request, and opaque provider-specific payload fields are preserved
+rather than recursively budgeted. The remote `mergeSeparator` is capped at
+1,024 Unicode characters, and merge construction shares the total text budget.
+
 ```bash
 pnpm --filter @ark/example-mcp-server build
 node examples/mcp-server/dist/index.mjs   # speaks MCP over stdio
@@ -34,7 +52,7 @@ the agent having to call ARK explicitly.
 ## Version & compatibility notes (mid-2026)
 
 - Target the current stable spec revision **2025-11-25**; pin
-  `@modelcontextprotocol/sdk@^1.29.0`.
+  `@modelcontextprotocol/sdk@^1.30.0`.
 - A **stateless** protocol core lands with the 2026-07-28 revision (no
   `initialize` handshake, no `Mcp-Session-Id`; client context moves into
   per-request `_meta`). Keep interceptors session-agnostic and attach ARK
